@@ -1,3 +1,7 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { text } from "node:stream/consumers";
 import type { Knex } from "knex";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -69,5 +73,48 @@ describe("Android reinstall recovery", () => {
       name: "Recovery series",
       order: 3,
     });
+  });
+});
+
+describe("Companion thumbnail paths", () => {
+  it("ignores an old catalog path even when its thumbnail was copied", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "cover-fixture-"));
+    const legacy = path.join(root, "legacy");
+    const thumbnails = path.join(root, "thumbnails");
+    const pages = path.join(root, "pages");
+    const oldCover = path.join(legacy, "42.webp");
+    const currentCover = path.join(thumbnails, "42.webp");
+    const book = { path: pages, cover_path: oldCover };
+    const lookup = {
+      select: () => lookup,
+      where: () => lookup,
+      first: async () => book,
+    };
+    const db = (() => lookup) as unknown as Knex;
+    const library = new DesktopLibraryService(
+      db,
+      undefined,
+      undefined,
+      () => thumbnails,
+    );
+    try {
+      await Promise.all(
+        [legacy, thumbnails, pages].map((dir) => fs.mkdir(dir)),
+      );
+      await fs.writeFile(path.join(pages, "1.png"), "original page");
+      await fs.writeFile(oldCover, "other catalog");
+      await fs.copyFile(oldCover, currentCover);
+      expect(await text((await library.getCover(42))!.stream)).toBe(
+        "original page",
+      );
+
+      book.cover_path = currentCover;
+      await fs.writeFile(currentCover, "current cover");
+      expect(await text((await library.getCover(42))!.stream)).toBe(
+        "current cover",
+      );
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 });

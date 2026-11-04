@@ -69,6 +69,7 @@ export class DesktopLibraryService implements CompanionLibraryService {
     private readonly database: Knex = db,
     private readonly getDownloadPath: () => string = () => "",
     private readonly getCoverDirectory: () => string = () => "",
+    private readonly getThumbnailDirectory: () => string = () => "",
   ) {}
 
   private get presentations() {
@@ -453,8 +454,16 @@ export class DesktopLibraryService implements CompanionLibraryService {
       const hash = path.basename(book.cover_path, ".image");
       if (/^[a-f0-9]{64}$/.test(hash) && this.getCoverDirectory())
         return this.presentations.getCover(hash);
-      const cover = await imageFile(book.cover_path);
-      if (cover) return cover;
+      const thumbnailDirectory = this.getThumbnailDirectory();
+      if (
+        thumbnailDirectory &&
+        path.isAbsolute(book.cover_path) &&
+        path.relative(thumbnailDirectory, path.dirname(book.cover_path)) === ""
+      ) {
+        const cover = await imageFile(book.cover_path);
+        if (cover) return cover;
+      }
+      // Numeric thumbnail names can belong to different books in an older catalog.
     }
     return this.getPage(bookId, 0);
   }

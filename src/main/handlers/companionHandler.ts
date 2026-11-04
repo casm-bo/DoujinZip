@@ -100,6 +100,7 @@ export const companionServer = new CompanionServer(
     db,
     () => store.get("downloadPath", ""),
     () => path.join(app.getPath("userData"), "presentation-covers"),
+    () => path.join(app.getPath("userData"), "thumbnails"),
   ),
   new DesktopCompanionSyncService(db),
   new SubscriptionSyncService(db),
