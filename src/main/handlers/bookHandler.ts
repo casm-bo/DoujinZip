@@ -1522,6 +1522,7 @@ export const handleDeleteBook = async (
       }
     }
 
+    notifyCompanionLibraryChanged();
     return { success: true };
   } catch (error) {
     console.error(`[Main] Failed to delete book ${bookId}:`, error);

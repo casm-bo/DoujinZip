@@ -41,6 +41,10 @@ vi.mock("../../../src/main/db/index.js", () => ({
   },
 }));
 
+vi.mock("../../../src/main/services/companion/companionSyncSignal.js", () => ({
+  notifyCompanionLibraryChanged: vi.fn(),
+}));
+import { notifyCompanionLibraryChanged } from "../../../src/main/services/companion/companionSyncSignal.js";
 import { handleDeleteBook } from "../../../src/main/handlers/bookHandler.js";
 import {
   createTestDb,
@@ -85,6 +89,7 @@ describe("handleDeleteBook 휴지통 기본화", () => {
     const result = await handleDeleteBook(book.id as number);
 
     expect(result.success).toBe(true);
+    expect(notifyCompanionLibraryChanged).toHaveBeenCalledOnce();
     expect(mockTrashItem).toHaveBeenCalledWith(filePath);
     expect(await db("Book").where("id", book.id).first()).toBeUndefined();
 
