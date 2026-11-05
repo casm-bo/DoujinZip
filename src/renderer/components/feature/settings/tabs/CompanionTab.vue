@@ -44,7 +44,11 @@ async function refresh() {
   if (isRefreshing.value) return;
   isRefreshing.value = true;
   try {
+    const currentPairing = pairing.value;
     status.value = await ipcRenderer.invoke("get-companion-status");
+    if (pairing.value === currentPairing && !status.value.pairingAvailable) {
+      pairing.value = null;
+    }
     devices.value = await ipcRenderer.invoke("get-companion-devices");
     syncStatus.value = await ipcRenderer.invoke("get-companion-sync-status");
   } finally {
