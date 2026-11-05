@@ -40,6 +40,8 @@ interface LibraryBookRow {
   page_count: number | null;
   added_at: string | null;
   file_mtime: number | null;
+  content_token: string | null;
+  content_revision: number;
   current_page: number | null;
   is_favorite: number | boolean;
   is_read: number | boolean;
@@ -401,6 +403,8 @@ export class DesktopLibraryService implements CompanionLibraryService {
         title: book.title,
         pageCount: Math.max(0, book.page_count || 0),
         modifiedAt: getModifiedAt(book),
+        contentVersion: book.content_token ?? undefined,
+        contentRevision: book.content_revision ?? 0,
         currentPage: Math.max(0, book.current_page || 0),
         isFavorite: Boolean(book.is_favorite),
         isRead: Boolean(book.is_read),
@@ -433,6 +437,14 @@ export class DesktopLibraryService implements CompanionLibraryService {
       nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
       hasMore,
     };
+  }
+
+  async getContentVersion(bookId: number): Promise<string | null> {
+    const book = await this.database("Book")
+      .select("content_token")
+      .where("id", bookId)
+      .first();
+    return book?.content_token ?? null;
   }
 
   async getPageCount(bookId: number): Promise<number | null> {
@@ -474,7 +486,7 @@ export class DesktopLibraryService implements CompanionLibraryService {
   ): Promise<CompanionLibraryImage | null> {
     if (!Number.isInteger(pageIndex) || pageIndex < 0) return null;
     const book = await this.database("Book")
-      .select("path")
+      .select("path", "content_manifest")
       .where("id", bookId)
       .first();
     if (!book?.path) return null;
@@ -487,7 +499,24 @@ export class DesktopLibraryService implements CompanionLibraryService {
           IMAGE_EXTENSIONS.has(path.extname(file).toLowerCase()),
         )
         .sort(naturalSort);
-      const file = files[pageIndex];
+      const manifest = book.content_manifest
+        ? JSON.parse(book.content_manifest)
+        : null;
+      const file = manifest
+        ? manifest.pages[pageIndex]?.name
+        : files[pageIndex];
+      if (manifest && file) {
+        const info = await fs
+          .stat(path.join(book.path, file))
+          .catch(() => null);
+        const expected = manifest.pages[pageIndex].signature;
+        if (
+          !info ||
+          (expected.includes(":") &&
+            expected !== `${info.size}:${info.mtimeMs}`)
+        )
+          return null;
+      }
       return file ? imageFile(path.join(book.path, file)) : null;
     }
     if (stat.isFile() && /\.(cbz|zip)$/i.test(book.path)) {

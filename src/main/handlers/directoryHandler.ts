@@ -7,6 +7,11 @@ import PQueue from "p-queue"; // p-queue 임포트
 import path from "path";
 import yauzl from "yauzl";
 import db from "../db/index.js";
+import {
+  type ContentManifest,
+  inspectContent,
+  saveContent,
+} from "../services/libraryContent.js";
 import { Book } from "../db/types.js";
 import { console } from "../main.js";
 import { ParsedMetadata, parseInfoTxt } from "../parsers/infoTxtParser.js";
@@ -99,11 +104,11 @@ async function loadZipScanCache(directoryPath: string): Promise<
   >();
   const normalizedDir = directoryPath.replaceAll("/", "\\");
   const rows = await db("Book")
-    .select("path", "file_mtime", "file_size", "sync_id")
+    .select("path", "file_mtime", "file_size", "sync_id", "content_token")
     .whereLike("path", `${normalizedDir}%`);
   for (const row of rows) {
     map.set(row.path, {
-      file_mtime: row.file_mtime,
+      file_mtime: row.content_token ? row.file_mtime : null,
       file_size: row.file_size,
       sync_id: row.sync_id,
     });
@@ -239,12 +244,14 @@ async function processBookItem(
     name,
     file_mtime,
     file_size,
+    forceContent = false,
   }: {
     isDirectory: boolean;
     isFile: boolean;
     name: string;
     file_mtime?: number | null;
     file_size?: number | null;
+    forceContent?: boolean;
   },
 ) {
   // 1. 반환할 책 데이터, 커버 경로, 메타데이터 객체를 초기화합니다.
@@ -359,6 +366,7 @@ async function processBookItem(
     return {
       bookData,
       infoMetadata,
+      content: await inspectContent(itemPath, null, forceContent),
     };
   }
 
@@ -756,6 +764,9 @@ async function processBatchInTransaction(
       }
     }
 
+    const contentResult = await saveContent(trx, bookId, processedBook.content);
+    if (contentResult.staleCover)
+      thumbnailRemovals.push({ cover_path: contentResult.staleCover });
     await new DesktopPresentationService(
       db,
       path.join(app.getPath("userData"), "presentation-covers"),
@@ -796,6 +807,7 @@ async function processBatchInTransaction(
 interface ProcessedBook {
   bookData: Book;
   infoMetadata: ParsedMetadata;
+  content: ContentManifest;
 }
 
 export function deduplicateBookSyncIds(
@@ -1213,6 +1225,7 @@ export async function scanDirectory(
           name: path.basename(itemPath),
           file_mtime: entryStat?.mtimeMs,
           file_size: isZip ? entryStat?.size : undefined,
+          forceContent: force,
         });
 
         if (bookResult) {
@@ -1385,6 +1398,7 @@ export async function scanFile(
       name: path.basename(filePath),
       file_mtime: stats.mtimeMs,
       file_size: stats.isFile() ? stats.size : undefined,
+      forceContent: metadataMode === "hard",
     });
     if (!processedBook) return null;
 
@@ -1496,6 +1510,40 @@ export const handleRescanLibraryFolder = async (folderPath: string) => {
   }
 };
 
+let contentRefresh: Promise<{ success: boolean; errors: number }> | null = null;
+export function refreshLibraryContent() {
+  return (contentRefresh ??= (async () => {
+    let errors = 0;
+    let changed = false;
+    const books = await db("Book").select("id", "path", "content_manifest");
+    for (const book of books) {
+      try {
+        const manifest = await inspectContent(
+          book.path,
+          book.content_manifest ? JSON.parse(book.content_manifest) : null,
+        );
+        const result = await db.transaction((trx) =>
+          saveContent(trx, book.id, manifest),
+        );
+        changed ||= result.changed;
+        if (result.staleCover)
+          await removeThumbnailFiles([{ cover_path: result.staleCover }]);
+        if (result.firstChanged) await handleGenerateThumbnail(book.id);
+      } catch (error) {
+        errors++;
+        console.error("[Main] Content refresh failed", book.id, error);
+      }
+    }
+    if (changed) {
+      broadcastBooksUpdated();
+      notifyCompanionLibraryChanged();
+    }
+    return { success: errors === 0, errors };
+  })().finally(() => {
+    contentRefresh = null;
+  }));
+}
+
 export const handleRescanBookMetadata = async (bookId: number) => {
   try {
     const book = await db("Book").where("id", bookId).first();
@@ -1514,6 +1562,7 @@ export const handleRescanBookMetadata = async (bookId: number) => {
 
 export function registerDirectoryHandlers() {
   ipcMain.handle("select-folder", (_event) => handleSelectFolder());
+  ipcMain.handle("refresh-library-content", () => refreshLibraryContent());
   ipcMain.handle("rescan-library-folder", (_event, folderPath) =>
     handleRescanLibraryFolder(folderPath),
   );

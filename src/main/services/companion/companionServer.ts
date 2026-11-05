@@ -70,6 +70,8 @@ export interface CompanionLibraryBook {
   title: string;
   pageCount: number;
   modifiedAt: number;
+  contentVersion?: string;
+  contentRevision?: number;
   currentPage: number;
   isFavorite: boolean;
   isRead?: boolean;
@@ -162,6 +164,7 @@ export interface CompanionLibraryService {
     }>
   >;
   deleteBook(bookId: number): Promise<CompanionOperationResult>;
+  getContentVersion?(bookId: number): Promise<string | null>;
   getPageCount(bookId: number): Promise<number | null>;
   getCover(bookId: number): Promise<CompanionLibraryImage | null>;
   getPage(
@@ -213,6 +216,7 @@ export class CompanionServer {
     ReturnType<typeof setTimeout>
   >();
   private syncGeneration = 0;
+  private readonly snapshotId = randomUUID();
   subscriptionChanged?: (readsOnly: boolean) => void;
 
   constructor(
@@ -804,6 +808,15 @@ export class CompanionServer {
         });
         return true;
       }
+      const snapshot = requestUrl.searchParams.get("snapshot");
+      const generation = `${this.snapshotId}:${this.syncGeneration}`;
+      if (snapshot !== null && snapshot !== generation) {
+        this.sendJson(response, 409, {
+          success: false,
+          error: "Library changed; refresh again",
+        });
+        return true;
+      }
       const page = await service.listBooks(
         cursor ?? undefined,
         limit ?? undefined,
@@ -811,6 +824,7 @@ export class CompanionServer {
       this.sendJson(response, 200, {
         success: true,
         data: page,
+        snapshot: String(generation),
       });
       return true;
     }
@@ -824,6 +838,23 @@ export class CompanionServer {
     const resource = bookMatch[2];
     const pageIndexText = bookMatch[3];
 
+    const version = await service.getContentVersion?.(bookId);
+    const expected = new URL(
+      request.url || "/",
+      "http://companion.local",
+    ).searchParams.get("v");
+    if (
+      expected !== null &&
+      !/^\d+$/.test(expected) &&
+      version &&
+      expected !== version
+    ) {
+      this.sendJson(response, 409, {
+        success: false,
+        error: "Book content changed; refresh again",
+      });
+      return true;
+    }
     if (resource === "pages" && pageIndexText === undefined) {
       const pageCount = await service.getPageCount(bookId);
       if (pageCount === null) {
@@ -837,7 +868,8 @@ export class CompanionServer {
         success: true,
         data: Array.from(
           { length: pageCount },
-          (_, index) => `/v1/library/books/${bookId}/pages/${index}`,
+          (_, index) =>
+            `/v1/library/books/${bookId}/pages/${index}${version ? `?v=${encodeURIComponent(version)}` : ""}`,
         ),
       });
       return true;

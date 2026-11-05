@@ -622,6 +622,10 @@ export interface IpcChannels {
     request: void;
     response: { success: boolean; path?: string };
   };
+  "refresh-library-content": {
+    request: void;
+    response: { success: boolean; errors: number };
+  };
   "rescan-library-folder": {
     request: string; // folderPath
     response: {

@@ -22,6 +22,7 @@ import {
   restoreBooksOnlineUnderPath,
   scanDirectory,
   scanFile,
+  refreshLibraryContent,
 } from "../../../src/main/handlers/directoryHandler.js";
 
 // electron 모듈 모킹
@@ -102,6 +103,31 @@ describe("오프라인 라이브러리 보존", () => {
 
   afterAll(async () => {
     await db.destroy();
+  });
+
+  it("refreshes changed content without altering metadata or rescanning unchanged books", async () => {
+    const folder = await fs.mkdtemp(path.join(os.tmpdir(), "refresh-content-"));
+    try {
+      await fs.writeFile(path.join(folder, "1.jpg"), "first");
+      const id = await scanFile(folder);
+      const original = await db("Book").where("id", id).first();
+      expect(original.content_revision).toBe(1);
+      expect((await refreshLibraryContent()).success).toBe(true);
+      expect((await db("Book").where("id", id).first()).content_token).toBe(
+        original.content_token,
+      );
+      await fs.writeFile(path.join(folder, "2.jpg"), "added");
+      expect((await refreshLibraryContent()).success).toBe(true);
+      const updated = await db("Book").where("id", id).first();
+      expect(updated.content_revision).toBe(2);
+      expect(updated.page_count).toBe(2);
+      expect(updated.title).toBe(original.title);
+      await fs.rm(folder, { recursive: true });
+      expect((await refreshLibraryContent()).success).toBe(false);
+      expect(await db("Book").where("id", id).first()).toEqual(updated);
+    } finally {
+      await fs.rm(folder, { recursive: true, force: true });
+    }
   });
 
   describe("마이그레이션", () => {
@@ -476,7 +502,9 @@ describe("오프라인 라이브러리 보존", () => {
 
   describe("file modification time scanning", () => {
     it("stores folder mtime without a meaningless folder size", async () => {
-      const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "mtime-folder-"));
+      const tempRoot = await fs.mkdtemp(
+        path.join(os.tmpdir(), "mtime-folder-"),
+      );
       try {
         const bookPath = path.join(tempRoot, "book");
         await fs.mkdir(bookPath);

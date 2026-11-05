@@ -503,6 +503,43 @@ describe("CompanionServer", () => {
     expect(libraryService.getPage).toHaveBeenCalledWith(42, 1);
   });
 
+  it("versions page URLs and rejects stale content and list snapshots", async () => {
+    const token = await pairTestDevice();
+    const headers = { Authorization: `Bearer ${token}` };
+    libraryService.getContentVersion = vi.fn(async () => "current-content");
+    vi.mocked(libraryService.getPageCount).mockResolvedValue(2);
+    const response = await fetch(
+      `${baseUrl}/v1/library/books/42/pages?v=current-content`,
+      { headers },
+    );
+    expect((await response.json()).data).toEqual([
+      "/v1/library/books/42/pages/0?v=current-content",
+      "/v1/library/books/42/pages/1?v=current-content",
+    ]);
+    expect(
+      (
+        await fetch(`${baseUrl}/v1/library/books/42/pages?v=old-content`, {
+          headers,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await fetch(`${baseUrl}/v1/library/books/42/pages/0?v=old-content`, {
+          headers,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await fetch(`${baseUrl}/v1/library/books?limit=1&snapshot=obsolete`, {
+          headers,
+        })
+      ).status,
+    ).toBe(409);
+    delete libraryService.getContentVersion;
+  });
+
   it("requires authentication for desktop library covers", async () => {
     const response = await fetch(`${baseUrl}/v1/library/books/42/cover`);
 

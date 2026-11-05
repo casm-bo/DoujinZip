@@ -609,6 +609,22 @@ const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
 };
 
+const refreshingContent = ref(false);
+const refreshContent = async () => {
+  if (refreshingContent.value) return;
+  refreshingContent.value = true;
+  try {
+    const result = await ipcRenderer.invoke("refresh-library-content");
+    await refetch();
+    if (!result.success)
+      toast.error(`일부 파일을 확인하지 못했습니다 (${result.errors})`);
+  } catch {
+    toast.error("라이브러리 새로고침에 실패했습니다.");
+  } finally {
+    refreshingContent.value = false;
+  }
+};
+
 const reshuffleRandomOrder = () => {
   uiStore.reshuffleLibraryRandomSeed();
   toast.info("순서를 다시 섞었습니다.");
@@ -809,7 +825,8 @@ watch(
         size="icon"
         aria-label="라이브러리 새로고침"
         title="라이브러리 새로고침"
-        @click="refetch()"
+        :disabled="refreshingContent"
+        @click="refreshContent"
         ><Icon icon="solar:refresh-linear" class="size-5"
       /></Button>
       <DropdownMenu>
