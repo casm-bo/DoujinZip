@@ -112,6 +112,7 @@ const invokeChannels = new Set([
   "get-presentation",
   "save-presentation",
   "change-cover",
+  "reset-cover",
   "set-book-read",
   "set-series-read",
   "update-book-current-page",

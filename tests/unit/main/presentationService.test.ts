@@ -94,6 +94,91 @@ describe("presentation storage and transfer", () => {
       result.value.version,
     );
   });
+  it("resets every target cover link, preserves metadata and deletes an unshared file", async () => {
+    const book = await seedBook(db, { hitomi_id: "123" });
+    await service.apply("phone", {
+      mutationId: "reset-initial",
+      baseVersion: 0,
+      value: value(),
+    });
+    const image = await sharp({
+      create: { width: 10, height: 10, channels: 3, background: "blue" },
+    })
+      .png()
+      .toBuffer();
+    const custom = await service.changeCover("hitomi:123", "Ignored", image);
+    const file = path.join(directory, `${custom.value.coverHash}.image`);
+    expect(await service.resetCover(["hitomi:123"], book.id)).toEqual([
+      book.id,
+    ]);
+    expect(
+      (await db("Book").where("id", book.id).first()).cover_path,
+    ).toBeNull();
+    expect(await service.get("hitomi:123")).toMatchObject({
+      title: "Edited",
+      coverHash: null,
+      metadata: custom.value.metadata,
+      version: custom.value.version + 1,
+    });
+    await expect(fs.stat(file)).rejects.toThrow();
+  });
+  it("clears both series cover keys and preserves files still used by another target", async () => {
+    await seedBook(db, { hitomi_id: "123" });
+    await service.apply("phone", {
+      mutationId: "shared-initial",
+      baseVersion: 0,
+      value: value(),
+    });
+    const image = await sharp({
+      create: { width: 10, height: 10, channels: 3, background: "green" },
+    })
+      .png()
+      .toBuffer();
+    const bookCover = await service.changeCover("hitomi:123", "Ignored", image);
+    const seriesKey = seriesCoverPresentationKey("Series");
+    const legacyKey = seriesPresentationKey("Series");
+    await service.changeCover(seriesKey, "Series", image);
+    await service.apply("phone", {
+      mutationId: "legacy-cover",
+      baseVersion: 0,
+      value: { ...value(legacyKey), coverHash: bookCover.value.coverHash },
+    });
+    const [seriesId] = await db("SeriesCollection").insert({
+      name: "Series",
+      cover_image: path.join(directory, `${bookCover.value.coverHash}.image`),
+    });
+    await service.resetCover([seriesKey, legacyKey], undefined, seriesId);
+    expect(
+      (await db("SeriesCollection").where("id", seriesId).first()).cover_image,
+    ).toBeNull();
+    expect((await service.getSeries("Series")).coverPath).toBeNull();
+    expect((await service.get("hitomi:123"))?.coverHash).toBe(
+      bookCover.value.coverHash,
+    );
+    expect(await service.hasCover(bookCover.value.coverHash!)).toBe(true);
+    await service.resetCover(["hitomi:123"]);
+    expect(await service.hasCover(bookCover.value.coverHash!)).toBe(false);
+  });
+  it("clears custom paths when receiving a synced cover reset", async () => {
+    const book = await seedBook(db, { hitomi_id: "123" });
+    await db("Book")
+      .where("id", book.id)
+      .update({
+        cover_path: path.join(
+          directory,
+          "presentation-covers",
+          `${"a".repeat(64)}.image`,
+        ),
+      });
+    await service.apply("phone", {
+      mutationId: "synced-reset",
+      baseVersion: 0,
+      value: value(),
+    });
+    expect(
+      (await db("Book").where("id", book.id).first()).cover_path,
+    ).toBeNull();
+  });
   afterAll(async () => {
     await db.destroy();
     await fs.rm(directory, { recursive: true, force: true });

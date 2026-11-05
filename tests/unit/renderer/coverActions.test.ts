@@ -70,6 +70,21 @@ function mount(kind: "book" | "series" = "book") {
   return { host, updated };
 }
 describe("cover selection", () => {
+  it("resets the target cover and refreshes details", async () => {
+    mocks.invoke.mockResolvedValue({ success: true });
+    const { host, updated } = mount("series");
+    const button = Array.from(host.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("표지 초기화"),
+    )!;
+    button.click();
+    await flush();
+    expect(mocks.invoke).toHaveBeenCalledWith("reset-cover", {
+      kind: "series",
+      id: 7,
+    });
+    expect(updated).toHaveBeenCalledOnce();
+  });
+
   it("sends the selected internal page and refreshes details after saving", async () => {
     mocks.invoke.mockResolvedValue({ status: "applied" });
     const { host, updated } = mount();

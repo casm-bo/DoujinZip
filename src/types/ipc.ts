@@ -249,6 +249,10 @@ export interface LibraryScanProgress {
 
 // IPC 채널 이름과 요청/응답 타입 매핑
 export interface IpcChannels {
+  "reset-cover": {
+    request: { kind: "book" | "series"; id: number };
+    response: { success: boolean };
+  };
   "change-cover": {
     request: {
       target: { kind: "book" | "series"; id: number };
@@ -1044,6 +1048,7 @@ export interface IpcSendChannels {
 }
 
 export interface IpcListenChannels {
+  "books-updated": void;
   "presentation-updated": string;
   "subscriptions-updated": void;
   "subscription-new-found": { subscriptionCount: number; newCount: number };

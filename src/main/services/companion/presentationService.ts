@@ -166,6 +166,14 @@ export class DesktopPresentationService {
           ? { cover_path: this.coverFile(value.coverHash) }
           : {}),
       });
+    if (!value.coverHash) {
+      const book = await trx("Book")
+        .where("id", bookId)
+        .select("cover_path")
+        .first();
+      if (book?.cover_path && isPresentationCoverPath(book.cover_path))
+        await trx("Book").where("id", bookId).update({ cover_path: null });
+    }
     const relations = [
       ["Artist", "BookArtist", "artist_id", value.metadata.artists],
       ["Tag", "BookTag", "tag_id", value.metadata.tags],
@@ -360,6 +368,79 @@ export class DesktopPresentationService {
       },
     });
   }
+  async resetCover(
+    keys: string[],
+    bookId?: number,
+    seriesId?: number,
+  ): Promise<number[]> {
+    const hashes = new Set<string>();
+    const affectedBooks: number[] = [];
+    const changedKeys: string[] = [];
+    await this.database.transaction(async (trx) => {
+      for (const key of keys) {
+        const row = await trx<Row>("GalleryPresentation")
+          .where("resource_key", key)
+          .first();
+        if (!row) continue;
+        const current = JSON.parse(row.payload) as GalleryPresentation;
+        if (current.coverHash) hashes.add(current.coverHash);
+        await this.write(
+          trx,
+          { ...current, coverHash: null },
+          current.version + 1,
+        );
+        changedKeys.push(key);
+        if (!key.startsWith("sync:series_")) {
+          const books = key.startsWith("hitomi:")
+            ? await trx("Book").where("hitomi_id", key.slice(7))
+            : await trx("Book").where("sync_id", key.slice(5));
+          for (const book of books) {
+            if (book.cover_path && isPresentationCoverPath(book.cover_path))
+              hashes.add(path.basename(book.cover_path, ".image"));
+            await trx("Book").where("id", book.id).update({ cover_path: null });
+            affectedBooks.push(book.id);
+          }
+        }
+      }
+      if (seriesId) {
+        const series = await trx("SeriesCollection")
+          .where("id", seriesId)
+          .first();
+        if (series?.cover_image && isPresentationCoverPath(series.cover_image))
+          hashes.add(path.basename(series.cover_image, ".image"));
+        await trx("SeriesCollection")
+          .where("id", seriesId)
+          .update({ cover_image: null });
+      }
+      if (bookId && !affectedBooks.includes(bookId)) {
+        const book = await trx("Book").where("id", bookId).first();
+        if (book?.cover_path && isPresentationCoverPath(book.cover_path))
+          hashes.add(path.basename(book.cover_path, ".image"));
+        await trx("Book").where("id", bookId).update({ cover_path: null });
+        affectedBooks.push(bookId);
+      }
+    });
+    for (const key of changedKeys) notifyCompanionLibraryChanged(true, key);
+    for (const hash of hashes) {
+      const rows = await this.database<Row>("GalleryPresentation").select(
+        "payload",
+      );
+      const referenced = rows.some(
+        (row) =>
+          (JSON.parse(row.payload) as GalleryPresentation).coverHash === hash,
+      );
+      const book = await this.database("Book")
+        .where("cover_path", this.coverFile(hash))
+        .first();
+      const series = await this.database("SeriesCollection")
+        .where("cover_image", this.coverFile(hash))
+        .first();
+      if (!referenced && !book && !series)
+        await fs.rm(this.coverFile(hash), { force: true });
+    }
+    return affectedBooks;
+  }
+
   async putCover(hash: string, bytes: Buffer): Promise<void> {
     const target = this.coverFile(hash);
     if (

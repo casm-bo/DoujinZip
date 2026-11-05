@@ -46,6 +46,24 @@ async function change(source: CoverRequest["source"]) {
     busy.value = false;
   }
 }
+async function reset() {
+  if (busy.value || props.disabled) return;
+  const target = { ...props.target };
+  busy.value = true;
+  try {
+    const result = await ipcRenderer.invoke("reset-cover", target);
+    if (!result.success) throw new Error("표지를 초기화하지 못했습니다.");
+    if (target.kind === props.target.kind && target.id === props.target.id) {
+      pickerOpen.value = false;
+      emit("updated");
+    }
+    toast.success("표지를 초기화했습니다.");
+  } catch (error) {
+    toast.error(`표지 초기화 실패: ${(error as Error).message}`);
+  } finally {
+    busy.value = false;
+  }
+}
 </script>
 
 <template>
@@ -70,6 +88,13 @@ async function change(source: CoverRequest["source"]) {
     >
       외부 이미지로 표지 변경
     </Button>
+    <Button
+      variant="outline"
+      size="sm"
+      :disabled="busy || disabled"
+      @click="reset"
+      >표지 초기화</Button
+    >
   </div>
   <Dialog v-model:open="pickerOpen">
     <DialogContent

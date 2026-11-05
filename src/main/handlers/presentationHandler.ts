@@ -2,10 +2,13 @@ import { app, dialog, ipcMain } from "electron";
 import fs from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { handleGenerateThumbnail } from "./thumbnailHandler.js";
+import { broadcast } from "../utils/broadcast.js";
 import db from "../db/index.js";
 import {
   DesktopPresentationService,
   seriesCoverPresentationKey,
+  seriesPresentationKey,
 } from "../services/companion/presentationService.js";
 import { DesktopLibraryService } from "../services/companion/companionLibraryService.js";
 import type { IpcChannels } from "../../types/ipc.js";
@@ -21,6 +24,7 @@ export const getPresentationService = () =>
   );
 
 export function registerPresentationHandlers() {
+  ipcMain.handle("reset-cover", (_event, input) => handleResetCover(input));
   ipcMain.handle("change-cover", (_event, input) => handleChangeCover(input));
   ipcMain.handle("get-presentation", async (_event, key: unknown) => {
     if (
@@ -121,4 +125,35 @@ export async function handleChangeCover(
   if (target.kind === "book" && !(await service.get(key)))
     await service.captureDesktopEdit(target.id);
   return service.changeCover(key, row.name || row.title, bytes);
+}
+
+export async function handleResetCover(
+  target: IpcChannels["reset-cover"]["request"],
+) {
+  if (
+    !target ||
+    !["book", "series"].includes(target.kind) ||
+    !Number.isSafeInteger(target.id) ||
+    target.id <= 0
+  )
+    throw new Error("표지 초기화 대상이 올바르지 않습니다.");
+  const row = await db(target.kind === "book" ? "Book" : "SeriesCollection")
+    .where("id", target.id)
+    .first();
+  if (!row) throw new Error("작품을 찾을 수 없습니다.");
+  const keys =
+    target.kind === "series"
+      ? [seriesCoverPresentationKey(row.name), seriesPresentationKey(row.name)]
+      : [row.hitomi_id ? `hitomi:${row.hitomi_id}` : `sync:${row.sync_id}`];
+  const ids = await getPresentationService().resetCover(
+    keys,
+    target.kind === "book" ? target.id : undefined,
+    target.kind === "series" ? target.id : undefined,
+  );
+  for (const id of ids) {
+    const book = await db("Book").where("id", id).first();
+    if (book && !book.is_offline) await handleGenerateThumbnail(id);
+  }
+  broadcast("books-updated");
+  return { success: true };
 }

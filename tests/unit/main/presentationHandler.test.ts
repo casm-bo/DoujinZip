@@ -11,7 +11,12 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   capture: vi.fn(),
   change: vi.fn(),
+  reset: vi.fn(),
 }));
+vi.mock("../../../src/main/handlers/thumbnailHandler.js", () => ({
+  handleGenerateThumbnail: vi.fn(),
+}));
+vi.mock("../../../src/main/utils/broadcast.js", () => ({ broadcast: vi.fn() }));
 vi.mock("electron", () => ({
   app: { getPath: () => "/data" },
   dialog: { showOpenDialog: mocks.open },
@@ -28,11 +33,13 @@ vi.mock("../../../src/main/db/index.js", () => ({
   }),
 }));
 vi.mock("../../../src/main/services/companion/presentationService.js", () => ({
+  seriesPresentationKey: (name: string) => `sync:series_${name}`,
   seriesCoverPresentationKey: (name: string) => `sync:series_cover_${name}`,
   DesktopPresentationService: class {
     get = mocks.get;
     captureDesktopEdit = mocks.capture;
     changeCover = mocks.change;
+    resetCover = mocks.reset;
   },
 }));
 vi.mock(
@@ -44,7 +51,10 @@ vi.mock(
     },
   }),
 );
-import { handleChangeCover } from "../../../src/main/handlers/presentationHandler.js";
+import {
+  handleChangeCover,
+  handleResetCover,
+} from "../../../src/main/handlers/presentationHandler.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -54,6 +64,7 @@ beforeEach(() => {
     },
     SeriesCollection: { 2: { id: 2, name: "Series" } },
   };
+  mocks.reset.mockResolvedValue([]);
   mocks.get.mockResolvedValue({ version: 1 });
   mocks.change.mockResolvedValue({ status: "applied" });
   mocks.stat.mockResolvedValue({ size: 100 });
@@ -132,5 +143,27 @@ describe("desktop cover sources", () => {
       }),
     ).rejects.toThrow("올바르지");
     expect(mocks.change).not.toHaveBeenCalled();
+  });
+});
+
+describe("desktop cover reset", () => {
+  it("clears both current and legacy series cover links", async () => {
+    await expect(handleResetCover({ kind: "series", id: 2 })).resolves.toEqual({
+      success: true,
+    });
+    expect(mocks.reset).toHaveBeenCalledWith(
+      ["sync:series_cover_Series", "sync:series_Series"],
+      undefined,
+      2,
+    );
+  });
+  it("clears book presentation and direct cover links", async () => {
+    await handleResetCover({ kind: "book", id: 1 });
+    expect(mocks.reset).toHaveBeenCalledWith(["hitomi:123"], 1, undefined);
+  });
+  it("rejects invalid or missing targets before modifying data", async () => {
+    await expect(handleResetCover({ kind: "book", id: -1 })).rejects.toThrow();
+    await expect(handleResetCover({ kind: "book", id: 99 })).rejects.toThrow();
+    expect(mocks.reset).not.toHaveBeenCalled();
   });
 });
