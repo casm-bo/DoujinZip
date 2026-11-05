@@ -1,3 +1,4 @@
+import "./fatalErrors.js";
 import "./appIdentity.js";
 import {
   app,
