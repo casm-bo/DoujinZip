@@ -5,6 +5,30 @@ import {
 } from "../../../src/main/services/hitomi/languages";
 
 afterEach(() => vi.unstubAllGlobals());
+it("puts Korean, Japanese, English and Chinese before the remaining languages", () => {
+  const codes = [
+    "french",
+    "chinese",
+    "german",
+    "japanese",
+    "english",
+    "korean",
+  ];
+  const script = `bitnumber_language=${JSON.stringify(Object.fromEntries(codes.map((value, index) => [index, value])))};language_localname={};`;
+  expect(parseAvailableLanguages(script).map((item) => item.value)).toEqual([
+    "korean",
+    "japanese",
+    "english",
+    "chinese",
+    "french",
+    "german",
+  ]);
+  expect(
+    parseAvailableLanguages(
+      'bitnumber_language={"0":"english","1":"french"};language_localname={}',
+    ).map((item) => item.value),
+  ).toEqual(["english", "french"]);
+});
 it("parses, normalizes and deduplicates the server language list", () => {
   expect(
     parseAvailableLanguages(

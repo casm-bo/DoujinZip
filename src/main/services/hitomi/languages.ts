@@ -24,7 +24,14 @@ export function parseAvailableLanguages(script: string): HitomiLanguage[] {
     });
   }
   if (!languages.size) throw new Error("서버 언어 목록이 비어 있습니다.");
-  return [...languages.values()].sort((a, b) => a.label.localeCompare(b.label));
+  const priority = ["korean", "japanese", "english", "chinese"];
+  const rank = (value: string) => {
+    const index = priority.indexOf(value);
+    return index < 0 ? priority.length : index;
+  };
+  return [...languages.values()].sort(
+    (a, b) => rank(a.value) - rank(b.value) || a.label.localeCompare(b.label),
+  );
 }
 
 let cached: { items: HitomiLanguage[]; at: number } | undefined;
