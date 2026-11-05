@@ -74,11 +74,6 @@ export function formatBytes(bytes: number, decimals = 2) {
 
 const TEMP_FILE_LOCATIONS = [
   {
-    key: "temp_cover",
-    label: "표지 추출",
-    description: "이전 버전에서 압축 파일로부터 추출한 임시 표지",
-  },
-  {
     key: "temp_external",
     label: "외부 뷰어",
     description: "외부 이미지 뷰어로 열기 위해 압축에서 꺼낸 임시 파일",

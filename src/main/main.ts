@@ -283,6 +283,14 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   await fs
+    .rm(path.join(app.getPath("userData"), "temp_cover"), {
+      recursive: true,
+      force: true,
+    })
+    .catch((error) =>
+      console.warn("Failed to remove legacy cover cache:", error),
+    );
+  await fs
     .rm(path.join(app.getPath("userData"), "downloader_temp_thumbnails"), {
       recursive: true,
       force: true,

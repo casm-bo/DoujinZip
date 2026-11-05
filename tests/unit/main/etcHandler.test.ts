@@ -142,7 +142,7 @@ describe("etcHandler", () => {
     mockReaddir.mockRejectedValue({ code: "ENOENT" });
 
     await expect(clearTempFiles("/mock/user/data")).resolves.toBeUndefined();
-    expect(mockRm).toHaveBeenCalledTimes(2);
+    expect(mockRm).toHaveBeenCalledTimes(1);
     expect(mockRm).toHaveBeenCalledWith(
       expect.stringContaining("temp_external"),
       { recursive: true, force: true },
@@ -155,9 +155,8 @@ describe("etcHandler", () => {
     const summary = await getTempFilesSummary("/mock/user/data");
 
     expect(summary.total).toBe("0 Bytes");
-    expect(summary.locations).toHaveLength(2);
+    expect(summary.locations).toHaveLength(1);
     expect(summary.locations.map((location) => location.key)).toEqual([
-      "temp_cover",
       "temp_external",
     ]);
     expect(
