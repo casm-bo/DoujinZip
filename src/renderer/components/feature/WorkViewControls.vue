@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import { Grid2X2, List, Minus, Plus } from "lucide-vue-next";
-defineProps<{
-  viewMode: "grid" | "list";
-  zoom: number;
-  groupSeries?: boolean;
-}>();
+withDefaults(
+  defineProps<{
+    viewMode: "grid" | "list";
+    zoom: number;
+    groupSeries?: boolean;
+  }>(),
+  { groupSeries: undefined },
+);
 const emit = defineEmits<{
   "update:viewMode": [value: "grid" | "list"];
   "update:groupSeries": [value: boolean];

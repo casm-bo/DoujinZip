@@ -23,6 +23,7 @@ it("changes and persists size in list mode and retains it when switching views",
       }),
   });
   app.mount(host);
+  expect(host.textContent).not.toContain("시리즈 묶어보기");
   const find = (label: string) =>
     host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!;
   expect(find("카드 확대").disabled).toBe(false);
@@ -62,4 +63,29 @@ it("prefers new scale settings and rejects invalid saved values", () => {
   localStorage.setItem("thumbnailZoomV2", "Infinity");
   setActivePinia(createPinia());
   expect(useUiStore().thumbnailZoom).toBe(1);
+});
+
+it("toggles grouping only when the caller supplies the option", async () => {
+  const grouped = ref(true);
+  const host = document.createElement("div");
+  app = createApp({
+    render: () =>
+      h(WorkViewControls, {
+        viewMode: "grid",
+        zoom: 1,
+        groupSeries: grouped.value,
+        "onUpdate:groupSeries": (value: boolean) => {
+          grouped.value = value;
+        },
+      }),
+  });
+  app.mount(host);
+  const button = Array.from(host.querySelectorAll("button")).find((button) =>
+    button.textContent?.includes("시리즈 묶어보기"),
+  )!;
+  expect(button.getAttribute("aria-pressed")).toBe("true");
+  button.click();
+  await nextTick();
+  expect(grouped.value).toBe(false);
+  expect(button.getAttribute("aria-pressed")).toBe("false");
 });
