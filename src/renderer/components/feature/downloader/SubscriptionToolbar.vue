@@ -396,7 +396,7 @@ defineExpose({ openManager, openSubscribe });
           <li
             v-for="row in rows"
             :key="row.subscription.id"
-            class="bg-card space-y-3 rounded-xl border p-4"
+            class="bg-card border-foreground/50 space-y-3 rounded-xl border-2 p-4"
           >
             <template v-if="editingId === row.subscription.id">
               <label class="block space-y-2 text-sm font-medium"
