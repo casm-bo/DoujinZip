@@ -282,6 +282,14 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  await fs
+    .rm(path.join(app.getPath("userData"), "downloader_temp_thumbnails"), {
+      recursive: true,
+      force: true,
+    })
+    .catch((error) =>
+      console.warn("Failed to remove legacy preview cache:", error),
+    );
   if (!gotTheLock) return;
 
   // 렌더러가 만들어질 때 이미 스킴이 등록되어 있어야 합니다.

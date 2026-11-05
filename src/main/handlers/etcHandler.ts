@@ -74,11 +74,6 @@ export function formatBytes(bytes: number, decimals = 2) {
 
 const TEMP_FILE_LOCATIONS = [
   {
-    key: "downloader_temp_thumbnails",
-    label: "다운로더 미리보기",
-    description: "이전 버전에서 디스크에 저장한 미리보기 캐시",
-  },
-  {
     key: "temp_cover",
     label: "표지 추출",
     description: "이전 버전에서 압축 파일로부터 추출한 임시 표지",
@@ -101,7 +96,7 @@ export async function getTempFilesSummary(
       path: path.join(userDataPath, key),
     }),
   );
-  const diskLocations = await Promise.all(
+  const locations = await Promise.all(
     locationDefinitions.map(
       async ({ key, label, description, path: locationPath }) => {
         const bytes = await getDirSize(locationPath);
@@ -116,17 +111,6 @@ export async function getTempFilesSummary(
       },
     ),
   );
-  const locations = [
-    {
-      key: "downloader_memory",
-      label: "다운로더 미리보기 메모리",
-      description: "최근 사용한 미리보기 이미지",
-      path: "RAM · 최대 256 MB",
-      bytes: downloadThumbnailCache.sizeBytes,
-      size: formatBytes(downloadThumbnailCache.sizeBytes),
-    },
-    ...diskLocations,
-  ];
   const totalBytes = locations.reduce((total, location) => {
     return total + location.bytes;
   }, 0);
