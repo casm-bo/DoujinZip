@@ -38,3 +38,13 @@ it("rejects arbitrary filenames and traversal in the presentation cover route", 
     ).toBeNull();
   }
 });
+
+it("uses content tokens to invalidate normal thumbnail caches", () => {
+  const file = "/synthetic/thumbnails/1.webp";
+  expect(getThumbnailUrl(file, "content-one:0")).toBe(
+    "doujinzip://thumbnail/1.webp?v=content-one%3A0",
+  );
+  expect(getThumbnailUrl(file, "content-two:0")).not.toBe(
+    getThumbnailUrl(file, "content-one:0"),
+  );
+});

@@ -1,4 +1,5 @@
 export interface Book {
+  content_token?: string | null;
   id: number;
   title: string;
   volume: number | null;

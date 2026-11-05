@@ -50,6 +50,7 @@ export interface UpdateCheckResult {
 }
 
 export interface Book {
+  content_token?: string | null;
   sync_id?: string;
   id: number;
   title: string;

@@ -821,6 +821,13 @@ export class CompanionServer {
         cursor ?? undefined,
         limit ?? undefined,
       );
+      if (generation !== `${this.snapshotId}:${this.syncGeneration}`) {
+        this.sendJson(response, 409, {
+          success: false,
+          error: "Library changed; refresh again",
+        });
+        return true;
+      }
       this.sendJson(response, 200, {
         success: true,
         data: page,
@@ -857,6 +864,13 @@ export class CompanionServer {
     }
     if (resource === "pages" && pageIndexText === undefined) {
       const pageCount = await service.getPageCount(bookId);
+      if (version !== (await service.getContentVersion?.(bookId))) {
+        this.sendJson(response, 409, {
+          success: false,
+          error: "Book content changed; refresh again",
+        });
+        return true;
+      }
       if (pageCount === null) {
         this.sendJson(response, 404, {
           success: false,
@@ -890,6 +904,14 @@ export class CompanionServer {
       return true;
     }
 
+    if (version !== (await service.getContentVersion?.(bookId))) {
+      image.stream.destroy();
+      this.sendJson(response, 409, {
+        success: false,
+        error: "Book content changed; refresh again",
+      });
+      return true;
+    }
     this.sendImage(response, image);
     return true;
   }

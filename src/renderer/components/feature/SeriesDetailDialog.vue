@@ -104,7 +104,7 @@ const coverSources = computed(() =>
     .filter((book) => book.cover_path || !book.is_offline)
     .map((book) => ({
       url: book.cover_path
-        ? getThumbnailUrl(book.cover_path)
+        ? getThumbnailUrl(book.cover_path, book.content_token ?? 0)
         : `doujinzip://page/${book.id}/0`,
       label: book.title,
       source: { kind: "book-cover" as const, bookId: book.id },
@@ -398,7 +398,7 @@ onBeforeUnmount(stopPresentationUpdates);
 
 // 썸네일 URL 생성
 const getCoverUrl = (book: Book) => {
-  return getThumbnailUrl(book.cover_path);
+  return getThumbnailUrl(book.cover_path, book.content_token ?? 0);
 };
 
 // 작가명 표시
@@ -507,6 +507,7 @@ const excludeBookIds = computed(() => books.value.map((book) => book.id));
                 :src="
                   getThumbnailUrl(
                     seriesDetail?.cover_image || firstBook?.cover_path,
+                    firstBook?.content_token ?? 0,
                   )
                 "
                 :alt="series?.name"

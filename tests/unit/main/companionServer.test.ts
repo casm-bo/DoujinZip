@@ -540,6 +540,60 @@ describe("CompanionServer", () => {
     delete libraryService.getContentVersion;
   });
 
+  it("rejects a page list changed during its request", async () => {
+    const token = await pairTestDevice();
+    const headers = { Authorization: `Bearer ${token}` };
+    let version = "original";
+    libraryService.getContentVersion = vi.fn(async () => version);
+    vi.mocked(libraryService.getPageCount).mockImplementation(async () => {
+      version = "changed";
+      return 2;
+    });
+    expect(
+      (
+        await fetch(`${baseUrl}/v1/library/books/42/pages?v=original`, {
+          headers,
+        })
+      ).status,
+    ).toBe(409);
+    delete libraryService.getContentVersion;
+  });
+
+  it("does not cache a raced image under its previous content version", async () => {
+    const token = await pairTestDevice();
+    let version = "original";
+    libraryService.getContentVersion = vi.fn(async () => version);
+    const stream = Readable.from(Buffer.from("new-image"));
+    vi.mocked(libraryService.getPage).mockImplementation(async () => {
+      version = "changed";
+      return { stream, contentType: "image/jpeg" };
+    });
+    expect(
+      (
+        await fetch(`${baseUrl}/v1/library/books/42/pages/0?v=original`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      ).status,
+    ).toBe(409);
+    expect(stream.destroyed).toBe(true);
+    delete libraryService.getContentVersion;
+  });
+
+  it("rejects a library snapshot changed during its request", async () => {
+    const token = await pairTestDevice();
+    vi.mocked(libraryService.listBooks).mockImplementation(async () => {
+      server.requestSync();
+      return { books: [], hasMore: false, nextCursor: null };
+    });
+    expect(
+      (
+        await fetch(`${baseUrl}/v1/library/books?limit=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      ).status,
+    ).toBe(409);
+  });
+
   it("requires authentication for desktop library covers", async () => {
     const response = await fetch(`${baseUrl}/v1/library/books/42/cover`);
 

@@ -151,7 +151,9 @@ const thumbnailKey = ref(0);
 const coverUrl = computed(() => {
   return api.getThumbnailUrl(
     props.book.series_cover_path || props.book.cover_path,
-    thumbnailKey.value,
+    props.book.content_token
+      ? `${props.book.content_token}:${thumbnailKey.value}`
+      : thumbnailKey.value,
   );
 });
 

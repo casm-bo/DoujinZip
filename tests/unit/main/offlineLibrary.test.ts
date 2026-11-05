@@ -130,6 +130,25 @@ describe("오프라인 라이브러리 보존", () => {
     }
   });
 
+  it("keeps an existing gallery identity when all images are removed", async () => {
+    const folder = await fs.mkdtemp(path.join(os.tmpdir(), "empty-content-"));
+    try {
+      await fs.writeFile(path.join(folder, "1.jpg"), "image");
+      const id = await scanFile(folder);
+      const original = await db("Book").where("id", id).first();
+      await db("Book").where("id", id).update({ is_favorite: true });
+      await fs.unlink(path.join(folder, "1.jpg"));
+      expect(await scanFile(folder)).toBe(id);
+      const updated = await db("Book").where("id", id).first();
+      expect(updated.page_count).toBe(0);
+      expect(updated.content_revision).toBe(original.content_revision + 1);
+      expect(updated.sync_id).toBe(original.sync_id);
+      expect(updated.is_favorite).toBe(1);
+    } finally {
+      await fs.rm(folder, { recursive: true, force: true });
+    }
+  });
+
   describe("마이그레이션", () => {
     it("Book 테이블에 is_offline 컬럼이 기본값 0으로 존재해야 함", async () => {
       const book = await seedBook(db, { path: "C:\\lib\\book1" });

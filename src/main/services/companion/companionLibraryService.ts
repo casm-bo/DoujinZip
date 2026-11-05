@@ -514,11 +514,13 @@ export class DesktopLibraryService implements CompanionLibraryService {
     const stat = await fs.stat(book.path).catch(() => null);
     if (!stat) return null;
     if (stat.isDirectory()) {
-      const files = (await fs.readdir(book.path))
-        .filter((file) =>
-          IMAGE_EXTENSIONS.has(path.extname(file).toLowerCase()),
-        )
-        .sort(naturalSort);
+      const files = book.content_manifest
+        ? []
+        : (await fs.readdir(book.path))
+            .filter((file) =>
+              IMAGE_EXTENSIONS.has(path.extname(file).toLowerCase()),
+            )
+            .sort(naturalSort);
       const manifest = book.content_manifest
         ? JSON.parse(book.content_manifest)
         : null;
@@ -540,6 +542,14 @@ export class DesktopLibraryService implements CompanionLibraryService {
       return file ? imageFile(path.join(book.path, file)) : null;
     }
     if (stat.isFile() && /\.(cbz|zip)$/i.test(book.path)) {
+      if (book.content_manifest) {
+        const source = JSON.parse(book.content_manifest).source;
+        if (
+          source.split(":").slice(0, 2).join(":") !==
+          `${stat.size}:${stat.mtimeMs}`
+        )
+          return null;
+      }
       return imageFromArchive(book.path, pageIndex);
     }
     return null;

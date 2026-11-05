@@ -349,6 +349,11 @@ async function processBookItem(
     }
   }
 
+  if (!bookData && (isDirectory || /\.(zip|cbz)$/i.test(itemPath))) {
+    const existing = await db("Book").where("path", itemPath).first();
+    if (existing) bookData = { ...existing, page_count: 0 };
+  }
+
   // 4. 책 데이터가 성공적으로 생성되었는지 확인합니다.
   if (bookData) {
     // 4-1. info.txt에서 파싱한 메타데이터가 있다면, bookData를 최종적으로 업데이트합니다.
@@ -1194,6 +1199,8 @@ export async function scanDirectory(
           continue;
         }
 
+        // A discovered book must survive inspection failures and empty contents.
+        totalFoundBookPathsInScan.add(itemPath);
         // 진행률 업데이트
         processedFileCount++;
         currentFileName = path.basename(itemPath);
@@ -1242,6 +1249,7 @@ export async function scanDirectory(
                 metadataMode,
               ),
             );
+            if (result.added || result.updated) notifyCompanionLibraryChanged();
             totalAddedCount += result.added;
             totalUpdatedCount += result.updated;
             allBookIdsToGenerateThumbnails.push(...result.thumbnailNeeded);
@@ -1271,6 +1279,7 @@ export async function scanDirectory(
           metadataMode,
         ),
       );
+      if (result.added || result.updated) notifyCompanionLibraryChanged();
       totalAddedCount += result.added;
       totalUpdatedCount += result.updated;
       allBookIdsToGenerateThumbnails.push(...result.thumbnailNeeded);
@@ -1525,6 +1534,7 @@ export function refreshLibraryContent() {
         const result = await db.transaction((trx) =>
           saveContent(trx, book.id, manifest),
         );
+        if (result.changed) notifyCompanionLibraryChanged();
         changed ||= result.changed;
         if (result.staleCover)
           await removeThumbnailFiles([{ cover_path: result.staleCover }]);

@@ -1,6 +1,6 @@
 export function getThumbnailUrl(
   coverPath: string | null | undefined,
-  version = 0,
+  version: string | number = 0,
 ): string {
   const parts = coverPath?.split(/[/\\]/);
   const fileName = parts?.at(-1);
@@ -10,6 +10,6 @@ export function getThumbnailUrl(
     /^[a-f0-9]{64}\.image$/.test(fileName)
       ? "presentation-cover"
       : "thumbnail";
-  const query = version ? `?v=${version}` : "";
+  const query = version ? `?v=${encodeURIComponent(String(version))}` : "";
   return `doujinzip://${kind}/${encodeURIComponent(fileName)}${query}`;
 }
