@@ -140,6 +140,9 @@ export class SubscriptionSyncService {
           enabled: value.enabled,
           deleted: value.deleted,
           languages: JSON.stringify([...new Set(value.languages)].sort()),
+          ...(currentValue?.deleted && !value.deleted
+            ? { last_seen_id: null }
+            : {}),
         };
         if (current)
           await tx("Subscription").where("id", current.id).update(fields);

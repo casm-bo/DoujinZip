@@ -92,6 +92,39 @@ describe("subscription synchronization", () => {
       value: first.value,
     });
   });
+  it("restores the same subscription only from its current deleted version", async () => {
+    const initial = await service.save("first-device", "create", value);
+    await db("Subscription")
+      .where("sync_id", value.id)
+      .update({ last_seen_id: 42 });
+    const removed = await service.save("first-device", "delete", {
+      ...initial.value,
+      deleted: true,
+    });
+
+    expect(
+      await service.save("second-device", "stale-edit", initial.value),
+    ).toMatchObject({
+      status: "conflict",
+      value: removed.value,
+    });
+    expect(
+      await service.save("second-device", "resubscribe", {
+        ...removed.value,
+        deleted: false,
+      }),
+    ).toMatchObject({
+      status: "applied",
+      value: {
+        id: value.id,
+        deleted: false,
+        version: removed.value.version + 1,
+      },
+    });
+    const rows = await db("Subscription");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].last_seen_id).toBeNull();
+  });
   it("preserves concurrent edits and detects duplicate conditions", async () => {
     const first = await service.save("test-device", "mutation-a", value);
     await db("Subscription")
