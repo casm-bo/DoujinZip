@@ -38,7 +38,7 @@ export interface ParsedSearchTerms extends ExcludeTerms {
 }
 
 const PREFIXED_TERM_REGEX =
-  /(-?)artist:(.+?)(?=\s*-?(?:id|artist|group|type|language|series|character|tag):|$)|(-?)(id|group|type|language|series|character|tag):\s*(\S+)/g;
+  /(-?)artist:(.+?)(?=\s*-?(?:id|artist|group|type|language|series|character|tag|male|female):|$)|(-?)(id|group|type|language|series|character|tag):\s*(\S+)/g;
 
 const isNumericTerm = (term: string): boolean => /^\d+$/.test(term);
 

@@ -5,6 +5,7 @@
  */
 import { hitomi } from "node-hitomi";
 import type { Tag } from "node-hitomi";
+import { normalizeArtistSearchQuery } from "../../../shared/search.js";
 
 export interface ParsedSubscription {
   positive: Tag[];
@@ -15,7 +16,7 @@ export type ValidationResult = { ok: true } | { ok: false; reason: string };
 
 /** 공백으로 끊어 빈 항목을 버린다 */
 const toTerms = (query: string): string[] =>
-  query.trim().split(/\s+/).filter(Boolean);
+  normalizeArtistSearchQuery(query).trim().split(/\s+/).filter(Boolean);
 
 /**
  * 중복 판정용 키를 만든다.

@@ -274,6 +274,15 @@ describe("parseSearchQuery", () => {
       expect(parseSearchQuery("artist:ab_cd").artistTerms).toEqual(["ab_cd"]);
     });
 
+    it("keeps gender tags separate from spaced artist names", () => {
+      const result = parseSearchQuery(
+        "artist:hi hello female:sole_female -male:yaoi",
+      );
+      expect(result.artistTerms).toEqual(["hi_hello"]);
+      expect(result.tagTerms).toEqual(["female:sole_female"]);
+      expect(result.exclude.tagTerms).toEqual(["male:yaoi"]);
+    });
+
     it("공백 없이 연속된 프리픽스도 분리", () => {
       const result = parseSearchQuery("artist:작가1tag:태그1");
       expect(result.artistTerms).toEqual(["작가1"]);

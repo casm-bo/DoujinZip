@@ -13,6 +13,7 @@ import type {
   HitomiGalleryDetails,
 } from "../../../types/hitomi.js";
 import { normalizeTagName } from "../../utils/tagName.js";
+import { normalizeArtistSearchQuery } from "../../../shared/search.js";
 
 export interface SearchGalleriesParams {
   query?: {
@@ -65,7 +66,9 @@ export class HitomiService {
     count = SEARCH_PAGE_SIZE,
     blacklistTags = [],
   }: SearchGalleriesParams): Promise<SearchGalleriesResult> {
-    const resolvedQuery = searchQuery ?? query?.searchQuery ?? "";
+    const resolvedQuery = normalizeArtistSearchQuery(
+      searchQuery ?? query?.searchQuery ?? "",
+    );
     const requestedStart =
       start ??
       (Math.max(page, 1) - 1) * SEARCH_PAGE_SIZE + (query?.offset || 0);

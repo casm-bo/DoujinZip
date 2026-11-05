@@ -40,6 +40,24 @@ describe("Hitomi search result cache", () => {
     expect(second.generation).toBe(first.generation);
   });
 
+  it("accepts spaced artist names without swallowing the next tag and shares the cache", async () => {
+    hitomiMocks.list.mockResolvedValue([{ id: 1 }]);
+    hitomiMocks.parse.mockReturnValue([]);
+    await service.searchGalleries({
+      searchQuery: "artist:hi hello female:sole_female",
+    });
+    await service.searchGalleries({
+      searchQuery: "artist:hi_hello female:sole_female",
+    });
+    expect(hitomiMocks.parse).toHaveBeenCalledWith(
+      "artist:hi_hello female:sole_female",
+    );
+    expect(hitomiMocks.list).toHaveBeenCalledTimes(1);
+    expect(hitomiMocks.list).toHaveBeenCalledWith(
+      expect.objectContaining({ title: undefined }),
+    );
+  });
+
   it("applies popularity, blacklist, and range options", async () => {
     hitomiMocks.list.mockResolvedValue([{ id: 10 }, { id: 20 }, { id: 30 }]);
     hitomiMocks.parse.mockImplementation((expression: string) => {
