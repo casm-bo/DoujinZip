@@ -233,6 +233,8 @@ export interface DeleteDuplicatesResult {
 
 // 라이브러리 스캔 진행률 정보
 export interface LibraryScanProgress {
+  operation?: "thumbnail-regeneration" | "metadata-rescan";
+  failed?: boolean;
   folderPath: string; // 스캔 중인 폴더 경로
   phase: "counting" | "scanning" | "thumbnails" | "series" | "completed"; // 현재 단계
   progress: number; // 0-100 진행률

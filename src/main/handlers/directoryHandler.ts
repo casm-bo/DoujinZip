@@ -37,7 +37,7 @@ let lastProgressBroadcastTime = 0;
 const PROGRESS_BROADCAST_INTERVAL = 100; // 100ms 간격으로 쓰로틀링
 
 // 진행률 브로드캐스트 함수
-function broadcastScanProgress(progress: LibraryScanProgress) {
+export function broadcastScanProgress(progress: LibraryScanProgress) {
   const now = Date.now();
   // 쓰로틀링: 마지막 전송 후 PROGRESS_BROADCAST_INTERVAL이 지나지 않았으면 전송하지 않음
   // 단, 완료(phase: 'completed')나 시작(phase: 'counting') 단계는 즉시 전송
@@ -1027,6 +1027,7 @@ export async function scanDirectory(
     force?: boolean;
     preserveMissingSyncIds?: boolean;
     metadataMode?: MetadataRescanMode;
+    onProgress?: (progress: LibraryScanProgress) => void;
   } = {},
 ): Promise<{
   added: number;
@@ -1041,6 +1042,7 @@ export async function scanDirectory(
     force = false,
     preserveMissingSyncIds = false,
     metadataMode = "soft",
+    onProgress = broadcastScanProgress,
   } = options;
   const MAX_SCAN_DEPTH = 100;
   const CHUNK_SIZE = 100; // 메모리 최적화를 위한 청크 크기
@@ -1081,7 +1083,7 @@ export async function scanDirectory(
       totalFileCount > 0
         ? Math.round((processedFileCount / totalFileCount) * 100)
         : 0;
-    broadcastScanProgress({
+    onProgress({
       folderPath: directoryPath,
       phase,
       progress,
@@ -1103,7 +1105,7 @@ export async function scanDirectory(
       console.warn(
         `[Main] 라이브러리 폴더 접근 불가: ${directoryPath} — ${offlineCount}권을 오프라인으로 표시`,
       );
-      broadcastScanProgress({
+      onProgress({
         folderPath: directoryPath,
         phase: "completed",
         progress: 100,
@@ -1297,7 +1299,7 @@ export async function scanDirectory(
         const progress = Math.round(
           (thumbnailsProcessed / totalThumbnails) * 100,
         );
-        broadcastScanProgress({
+        onProgress({
           folderPath: directoryPath,
           phase: "thumbnails",
           progress,
@@ -1352,7 +1354,7 @@ export async function scanDirectory(
     }
 
     // 4단계: 완료 (시리즈 감지는 라이브러리의 수동 버튼에서만 실행)
-    broadcastScanProgress({
+    onProgress({
       folderPath: directoryPath,
       phase: "completed",
       progress: 100,

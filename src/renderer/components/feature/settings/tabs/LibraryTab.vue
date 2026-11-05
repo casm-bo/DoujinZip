@@ -525,7 +525,7 @@ const generateMissingInfoFiles = async () => {
         <SettingItem title="전체 썸네일 재생성">
           <Button
             variant="outline"
-            :disabled="isRegeneratingThumbnails"
+            :disabled="isRegeneratingThumbnails || isRescanningMetadata"
             @click="regenerateAllThumbnails"
             >재생성</Button
           >
@@ -533,7 +533,7 @@ const generateMissingInfoFiles = async () => {
         <SettingItem title="전체 메타데이터 재스캔">
           <Button
             variant="outline"
-            :disabled="isRescanningMetadata"
+            :disabled="isRescanningMetadata || isRegeneratingThumbnails"
             @click="showRescanModeDialog = true"
           >
             재스캔

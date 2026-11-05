@@ -11,13 +11,17 @@ import db, { closeDbConnection } from "../db/index.js";
 import { filterLibraryPathRows } from "../utils/libraryPath.js";
 import { DEFAULT_DOWNLOAD_PATTERN } from "../utils/index.js";
 import {
+  broadcastScanProgress,
   cleanupMissingBooks,
   forgetBooksUnderPath,
   markBooksOfflineUnderPath,
   scanDirectory,
 } from "./directoryHandler.js";
 import { handleGenerateThumbnail } from "./thumbnailHandler.js";
-import type { MetadataRescanMode } from "../../types/ipc.js";
+import type {
+  LibraryScanProgress,
+  MetadataRescanMode,
+} from "../../types/ipc.js";
 import {
   DEFAULT_GALLERY_BORDERS,
   isGalleryBorders,
@@ -292,8 +296,38 @@ export const handleVerifyLockPassword = async (password: string) => {
 };
 
 export const handleRescanAllMetadata = async (mode: MetadataRescanMode) => {
+  const libraryFolders = store.get("libraryFolders", []);
+  let processed = 0;
+  let failed = true;
+  const report = (
+    phase: LibraryScanProgress["phase"],
+    details?: LibraryScanProgress,
+  ) =>
+    broadcastScanProgress({
+      operation: "metadata-rescan",
+      phase,
+      folderPath: details?.folderPath ?? "",
+      currentFile: details?.currentFile ?? null,
+      progress:
+        phase === "completed" && !failed
+          ? 100
+          : Math.min(
+              99,
+              Math.round(
+                ((processed + (details?.progress ?? 0) / 100) /
+                  Math.max(1, libraryFolders.length)) *
+                  100,
+              ),
+            ),
+      processedCount: processed,
+      totalCount: libraryFolders.length,
+      addedCount: 0,
+      updatedCount: 0,
+      deletedCount: 0,
+      failed: phase === "completed" && failed,
+    });
+  report("counting");
   try {
-    const libraryFolders = store.get("libraryFolders", []);
     const completedScans: {
       folderPath: string;
       foundPaths: Set<string>;
@@ -304,6 +338,7 @@ export const handleRescanAllMetadata = async (mode: MetadataRescanMode) => {
         force: true,
         preserveMissingSyncIds: true,
         metadataMode: mode,
+        onProgress: (progress) => report("scanning", progress),
       });
       completedScans.push({ folderPath, foundPaths: result.foundPaths });
       const candidates = await db("Book")
@@ -317,14 +352,18 @@ export const handleRescanAllMetadata = async (mode: MetadataRescanMode) => {
       await thumbnailQueue.addAll(
         books.map((book) => () => handleGenerateThumbnail(book.id)),
       );
+      processed++;
     }
     for (const { folderPath, foundPaths } of completedScans) {
       await cleanupMissingBooks(folderPath, foundPaths);
     }
+    failed = false;
     return { success: true };
   } catch (error) {
     console.error(`[ConfigHandler] Failed to rescan all metadata:`, error);
     return { success: false, error: (error as Error).message };
+  } finally {
+    report("completed");
   }
 };
 

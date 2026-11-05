@@ -18,6 +18,17 @@ const {
   completionId,
 } = storeToRefs(libraryScanStore);
 
+const operationName = computed(() => {
+  switch (scanProgress.value?.operation) {
+    case "thumbnail-regeneration":
+      return "썸네일 재생성";
+    case "metadata-rescan":
+      return "메타데이터 재스캔";
+    default:
+      return "스캔";
+  }
+});
+
 // 현재 처리 중인 파일명 (말줄임표 처리)
 const displayFileName = computed(() => {
   if (!scanProgress.value?.currentFile) return null;
@@ -56,7 +67,10 @@ const progressText = computed(() => {
         </div>
         <div class="flex-grow">
           <div class="flex items-center gap-2">
-            <span class="font-medium">스캔 완료</span>
+            <span class="font-medium"
+              >{{ operationName }}
+              {{ scanProgress.failed ? "실패" : "완료" }}</span
+            >
             <span v-if="statsSummary" class="text-muted-foreground text-sm">
               ({{ statsSummary }})
             </span>
@@ -90,7 +104,9 @@ const progressText = computed(() => {
       </div>
       <div class="min-w-0 flex-grow">
         <div class="mb-1 flex items-center justify-between gap-2">
-          <span class="font-medium">{{ phaseMessage }}</span>
+          <span class="font-medium">{{
+            scanProgress?.operation ? `${operationName} 중…` : phaseMessage
+          }}</span>
           <span class="text-muted-foreground text-sm">{{ progressText }}</span>
         </div>
         <Progress :value="progressPercent" class="mb-2 h-2" />

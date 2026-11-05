@@ -8,7 +8,11 @@ import { Worker } from "node:worker_threads"; // Worker 임포트
 import db from "../db/index.js";
 import { console } from "../main.js";
 import { isImageFile, sortImageFiles } from "../utils/imageFiles.js";
-import { extractCoverFromZip } from "./directoryHandler.js";
+import {
+  broadcastScanProgress,
+  extractCoverFromZip,
+} from "./directoryHandler.js";
+import type { LibraryScanProgress } from "../../types/ipc.js";
 import { isPresentationCoverPath } from "../services/companion/presentationService.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -220,6 +224,27 @@ export const handleGenerateThumbnail = async (bookId: number) => {
 
 export const handleRegenerateAllThumbnails = async () => {
   global.console.time("handleRegenerateAllThumbnails >>>>>>>>>");
+  let total = 0;
+  let processed = 0;
+  let failed = true;
+  const report = (phase: LibraryScanProgress["phase"]) =>
+    broadcastScanProgress({
+      operation: "thumbnail-regeneration",
+      phase,
+      folderPath: "",
+      currentFile: null,
+      progress:
+        phase === "completed" && !failed
+          ? 100
+          : Math.min(99, Math.round((processed / Math.max(1, total)) * 100)),
+      processedCount: processed,
+      totalCount: total,
+      addedCount: 0,
+      updatedCount: 0,
+      deletedCount: 0,
+      failed: phase === "completed" && failed,
+    });
+  report("counting");
   try {
     const books = await db("Book")
       .select("id")
@@ -227,6 +252,8 @@ export const handleRegenerateAllThumbnails = async () => {
         query.where("is_offline", false).orWhereNull("is_offline"),
       );
 
+    total = books.length;
+    report("thumbnails");
     const queue = new PQueue({ concurrency: Math.min(4, os.cpus().length) });
     const updatedThumbnails: { bookId: number; thumbnailPath: string }[] = [];
     let failedCount = 0;
@@ -239,6 +266,8 @@ export const handleRegenerateAllThumbnails = async () => {
         } else {
           failedCount++;
         }
+        processed++;
+        report("thumbnails");
       });
     }
 
@@ -271,10 +300,13 @@ export const handleRegenerateAllThumbnails = async () => {
         error: `${failedCount}개의 썸네일을 재생성하지 못했습니다.`,
       };
     }
+    failed = false;
     return { success: true, count: updatedThumbnails.length, failedCount: 0 };
   } catch (error) {
     console.error("[Main] Failed during thumbnail regeneration:", error);
     return { success: false, error: (error as Error).message };
+  } finally {
+    report("completed");
   }
 };
 
