@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanionDevice } from "../../../src/types/companion";
 import {
   CompanionServer,
+  CompanionLibraryNotReadyError,
   type CompanionDeviceStore,
   type CompanionDownloadService,
   type CompanionLibraryService,
@@ -98,6 +99,23 @@ describe("CompanionServer", () => {
     expect(await response.json()).toMatchObject({
       success: true,
       data: { service: "doujin-menu-companion", version: 2 },
+    });
+  });
+
+  it("returns an actionable error when restored library content needs verification", async () => {
+    const token = await pairTestDevice();
+    vi.mocked(libraryService.listBooks).mockRejectedValue(
+      new CompanionLibraryNotReadyError(
+        "Refresh the desktop library to verify restored content",
+      ),
+    );
+    const response = await fetch(`${baseUrl}/v1/library/books?limit=200`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: "Refresh the desktop library to verify restored content",
     });
   });
 

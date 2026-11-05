@@ -7,6 +7,7 @@ import { pipeline } from "stream/promises";
 import * as yauzl from "yauzl";
 import type { Knex } from "knex";
 import db from "../../db/index.js";
+import { CompanionLibraryNotReadyError } from "./companionServer.js";
 import { naturalSort } from "../../utils/index.js";
 import type {
   CompanionOperationResult,
@@ -456,7 +457,9 @@ export class DesktopLibraryService implements CompanionLibraryService {
           JSON.parse(book.content_manifest).source === "pending",
       )
     ) {
-      throw new Error("Refresh the desktop library to verify restored content");
+      throw new CompanionLibraryNotReadyError(
+        "Refresh the desktop library to verify restored content (PC 앱에서 라이브러리를 새로고침해 복원된 파일을 검증하세요).",
+      );
     }
     const hasMore = books.length > limit;
     const page = hasMore ? books.slice(0, limit) : books;

@@ -210,6 +210,8 @@ interface PairingAttemptState {
   windowStartedAt: number;
 }
 
+export class CompanionLibraryNotReadyError extends Error {}
+
 export class CompanionServer {
   private server: ReturnType<typeof createServer> | null = null;
   private port = DEFAULT_PORT;
@@ -244,6 +246,13 @@ export class CompanionServer {
 
     this.server = createServer((request, response) => {
       this.handleRequest(request, response).catch((error) => {
+        if (error instanceof CompanionLibraryNotReadyError) {
+          this.sendJson(response, 503, {
+            success: false,
+            error: error.message,
+          });
+          return;
+        }
         console.error("[Companion] Request failed:", error);
         this.sendJson(response, 500, {
           success: false,
