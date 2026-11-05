@@ -56,6 +56,7 @@ import { registerCompanionHandlers } from "./handlers/companionHandler.js";
 import { registerUpdaterHandlers } from "./updater.js";
 import { imageMimeType, sortImageFiles } from "./utils/imageFiles.js";
 import { readZipPage } from "./utils/zipPages.js";
+import { downloadThumbnailCache } from "./utils/thumbnailMemoryCache.js";
 import { parseMediaRequestUrl } from "./mediaProtocol.js";
 import { DesktopPresentationService } from "./services/companion/presentationService.js";
 import { Readable } from "stream";
@@ -307,17 +308,21 @@ app.whenReady().then(async () => {
         );
       }
       if (mediaRequest.kind !== "page") {
-        const thumbnailPath = path.join(
-          app.getPath("userData"),
-          mediaRequest.kind === "thumbnail"
-            ? "thumbnails"
-            : "downloader_temp_thumbnails",
-          mediaRequest.fileName,
-        );
-        const imageBuffer = await fs.readFile(thumbnailPath);
+        const imageBuffer =
+          mediaRequest.kind === "download-thumbnail"
+            ? downloadThumbnailCache.get(mediaRequest.fileName)
+            : await fs.readFile(
+                path.join(
+                  app.getPath("userData"),
+                  "thumbnails",
+                  mediaRequest.fileName,
+                ),
+              );
+        if (!imageBuffer)
+          return new Response("Thumbnail expired", { status: 404 });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return new Response(imageBuffer as any, {
-          headers: { "Content-Type": imageMimeType(thumbnailPath) },
+          headers: { "Content-Type": imageMimeType(mediaRequest.fileName) },
         });
       }
 
@@ -408,10 +413,6 @@ app.whenReady().then(async () => {
     console.error("[Main] 앱 사용 시간 추적 시작 실패:", error);
   }
 
-  await fs.mkdir(
-    path.join(app.getPath("userData"), "downloader_temp_thumbnails"),
-    { recursive: true },
-  );
   await fs.mkdir(path.join(app.getPath("userData"), "temp_cover"), {
     recursive: true,
   });

@@ -5,6 +5,7 @@ import { spawn } from "child_process";
 import { existsSync } from "fs";
 import fs from "fs/promises";
 import path from "path";
+import { downloadThumbnailCache } from "../utils/thumbnailMemoryCache.js";
 import { hitomiService } from "../services/hitomi/hitomiService.js";
 import db from "../db/index.js";
 import { sortImageFiles } from "../utils/imageFiles.js";
@@ -75,7 +76,7 @@ const TEMP_FILE_LOCATIONS = [
   {
     key: "downloader_temp_thumbnails",
     label: "다운로더 미리보기",
-    description: "검색 결과와 다운로드 미리보기용 썸네일 캐시",
+    description: "이전 버전에서 디스크에 저장한 미리보기 캐시",
   },
   {
     key: "temp_cover",
@@ -100,7 +101,7 @@ export async function getTempFilesSummary(
       path: path.join(userDataPath, key),
     }),
   );
-  const locations = await Promise.all(
+  const diskLocations = await Promise.all(
     locationDefinitions.map(
       async ({ key, label, description, path: locationPath }) => {
         const bytes = await getDirSize(locationPath);
@@ -115,6 +116,17 @@ export async function getTempFilesSummary(
       },
     ),
   );
+  const locations = [
+    {
+      key: "downloader_memory",
+      label: "다운로더 미리보기 메모리",
+      description: "최근 사용한 미리보기 이미지",
+      path: "RAM · 최대 256 MB",
+      bytes: downloadThumbnailCache.sizeBytes,
+      size: formatBytes(downloadThumbnailCache.sizeBytes),
+    },
+    ...diskLocations,
+  ];
   const totalBytes = locations.reduce((total, location) => {
     return total + location.bytes;
   }, 0);
@@ -122,6 +134,7 @@ export async function getTempFilesSummary(
 }
 
 export async function clearTempFiles(userDataPath = app.getPath("userData")) {
+  downloadThumbnailCache.clear();
   await Promise.all(
     TEMP_FILE_LOCATIONS.map(({ key }) =>
       fs.rm(path.join(userDataPath, key), { recursive: true, force: true }),

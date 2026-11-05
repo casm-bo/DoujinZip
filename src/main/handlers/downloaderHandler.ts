@@ -1,8 +1,10 @@
 import PQueue from "p-queue";
 import { DownloadArchive } from "../utils/downloadArchive.js";
-import { app, ipcMain } from "electron";
+import { ipcMain } from "electron";
 import fs from "fs/promises";
 import path from "path";
+import { createHash } from "node:crypto";
+import { downloadThumbnailCache } from "../utils/thumbnailMemoryCache.js";
 import { console } from "../main.js";
 import {
   hitomiService,
@@ -529,24 +531,19 @@ export const handleDownloadTempThumbnail = async ({
   galleryId: number;
 }) => {
   try {
-    const tempDir = path.join(
-      app.getPath("userData"),
-      "downloader_temp_thumbnails",
-    );
-    await fs.mkdir(tempDir, { recursive: true });
-
-    const fileName = `${galleryId}_${path.basename(new URL(url).pathname)}`;
-    const filePath = path.join(tempDir, fileName);
-
-    // 파일이 이미 존재하면 바로 경로를 반환
-    try {
-      await fs.access(filePath);
+    const imageUrl = new URL(url);
+    if (imageUrl.protocol !== "https:" && imageUrl.protocol !== "http:") {
+      throw new Error("Unsupported thumbnail URL");
+    }
+    const key = createHash("sha256")
+      .update(JSON.stringify([url, referer, galleryId]))
+      .digest("hex");
+    const fileName = `${key}${path.extname(imageUrl.pathname)}`;
+    if (downloadThumbnailCache.get(fileName)) {
       return {
         success: true,
         data: `doujinzip://download-thumbnail/${encodeURIComponent(fileName)}`,
       };
-    } catch {
-      // 파일이 없으면 다운로드 계속
     }
 
     const res = await fetch(url, {
@@ -562,7 +559,9 @@ export const handleDownloadTempThumbnail = async ({
     }
 
     const arrayBuffer = await res.arrayBuffer();
-    await fs.writeFile(filePath, Buffer.from(arrayBuffer));
+    if (!downloadThumbnailCache.set(fileName, Buffer.from(arrayBuffer))) {
+      throw new Error("Thumbnail exceeds the memory cache limit");
+    }
 
     return {
       success: true,

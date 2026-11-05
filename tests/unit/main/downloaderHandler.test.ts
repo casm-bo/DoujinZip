@@ -30,7 +30,11 @@ vi.mock("../../../src/main/db/index.js", () => ({
   })),
 }));
 
-import { handleDownloadGallery } from "../../../src/main/handlers/downloaderHandler.js";
+import {
+  handleDownloadGallery,
+  handleDownloadTempThumbnail,
+} from "../../../src/main/handlers/downloaderHandler.js";
+import { downloadThumbnailCache } from "../../../src/main/utils/thumbnailMemoryCache.js";
 import { hitomiService } from "../../../src/main/services/hitomi/hitomiService.js";
 import { store } from "../../../src/main/handlers/configHandler.js";
 import {
@@ -41,6 +45,7 @@ import {
 const createdDirs: string[] = [];
 
 afterEach(async () => {
+  downloadThumbnailCache.clear();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   await Promise.all(
@@ -48,6 +53,28 @@ afterEach(async () => {
       .splice(0)
       .map((dir) => fs.rm(dir, { recursive: true, force: true })),
   );
+});
+
+it("serves preview images from RAM and keeps different source URLs separate", async () => {
+  const fetch = vi.fn(async () => new Response(Buffer.from("image")));
+  vi.stubGlobal("fetch", fetch);
+  const request = {
+    url: "https://example.com/a/cover.webp",
+    referer: "https://example.com/",
+    galleryId: 1,
+  };
+  const first = await handleDownloadTempThumbnail(request);
+  expect(first.success).toBe(true);
+  expect(await handleDownloadTempThumbnail(request)).toEqual(first);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  const other = await handleDownloadTempThumbnail({
+    ...request,
+    url: "https://example.com/b/cover.webp",
+  });
+  expect(other.data).not.toBe(first.data);
+  expect(fetch).toHaveBeenCalledTimes(2);
+  const key = decodeURIComponent(new URL(first.data!).pathname.slice(1));
+  expect(downloadThumbnailCache.get(key)?.toString()).toBe("image");
 });
 
 describe("safe download archive", () => {
