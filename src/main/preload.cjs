@@ -77,6 +77,7 @@ const invokeChannels = new Set([
   "open-with-external-program",
   "pause-download",
   "regenerate-all-thumbnails",
+  "refresh-library-content",
   "forget-library-folder",
   "remove-book-from-series",
   "remove-from-download-queue",

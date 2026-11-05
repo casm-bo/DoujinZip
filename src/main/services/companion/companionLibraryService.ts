@@ -18,7 +18,6 @@ import type {
   CompanionSeriesAssignmentResult,
 } from "./companionServer.js";
 import { handleDeleteBook } from "../../handlers/bookHandler.js";
-import { handleGenerateThumbnail } from "../../handlers/thumbnailHandler.js";
 import {
   DesktopPresentationService,
   CoverResetConflict,
@@ -382,7 +381,11 @@ export class DesktopLibraryService implements CompanionLibraryService {
       );
       for (const id of ids) {
         const book = await this.database("Book").where("id", id).first();
-        if (book && !book.is_offline) await handleGenerateThumbnail(id);
+        if (book && !book.is_offline) {
+          const { handleGenerateThumbnail } =
+            await import("../../handlers/thumbnailHandler.js");
+          await handleGenerateThumbnail(id);
+        }
       }
       return { mutationId: input.mutationId, status: "applied" };
     } catch (error) {
