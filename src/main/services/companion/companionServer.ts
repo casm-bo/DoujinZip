@@ -163,6 +163,15 @@ export interface CompanionLibraryService {
       path: string;
     }>
   >;
+  resetPresentationCover?(
+    deviceId: string,
+    input: {
+      key: string;
+      mutationId: string;
+      versions: number[];
+      seriesName?: string;
+    },
+  ): Promise<{ mutationId: string; status: string }>;
   deleteBook(bookId: number): Promise<CompanionOperationResult>;
   getContentVersion?(bookId: number): Promise<string | null>;
   getPageCount(bookId: number): Promise<number | null>;
@@ -608,6 +617,51 @@ export class CompanionServer {
   ): Promise<boolean> {
     const service = this.libraryService;
     if (!service) return false;
+
+    if (
+      request.method === "POST" &&
+      pathname === "/v1/library/reset-cover" &&
+      service.resetPresentationCover
+    ) {
+      const body = await this.readJsonBody(request);
+      if (
+        typeof body.key !== "string" ||
+        !/^(hitomi:[0-9]+|sync:[A-Za-z0-9_-]+)$/.test(body.key) ||
+        body.key.length > 160 ||
+        typeof body.mutationId !== "string" ||
+        body.mutationId.length < 1 ||
+        body.mutationId.length > 160 ||
+        !Array.isArray(body.versions) ||
+        body.versions.length < 1 ||
+        body.versions.length > 2 ||
+        !body.versions.every(isNonNegativeInteger) ||
+        (body.seriesName !== undefined &&
+          (typeof body.seriesName !== "string" ||
+            body.seriesName.length < 1 ||
+            body.seriesName.length > 500)) ||
+        body.key.startsWith("sync:series_") !==
+          (body.seriesName !== undefined) ||
+        body.versions.length !== (body.seriesName !== undefined ? 2 : 1)
+      ) {
+        this.sendJson(response, 400, {
+          success: false,
+          error: "Invalid cover reset",
+        });
+        return true;
+      }
+      const result = await service.resetPresentationCover(
+        device.id,
+        body as {
+          key: string;
+          mutationId: string;
+          versions: number[];
+          seriesName?: string;
+        },
+      );
+      if (result.status === "applied") notifyCompanionLibraryChanged();
+      this.sendJson(response, 200, { success: true, data: result });
+      return true;
+    }
 
     if (
       pathname === "/v1/library/presentations" &&

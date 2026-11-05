@@ -778,6 +778,49 @@ describe("CompanionServer", () => {
     ).toBe(413);
   });
 
+  it("authenticates and validates cover reset requests", async () => {
+    libraryService.resetPresentationCover = vi
+      .fn()
+      .mockResolvedValue({ mutationId: "reset-fixture", status: "applied" });
+    expect(
+      (await fetch(`${baseUrl}/v1/library/reset-cover`, { method: "POST" }))
+        .status,
+    ).toBe(401);
+    const token = await pairTestDevice();
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+    const body = {
+      mutationId: "reset-fixture",
+      key: "hitomi:123",
+      versions: [2],
+    };
+    const result = await fetch(`${baseUrl}/v1/library/reset-cover`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+    expect(result.status).toBe(200);
+    expect((await result.json()).data.status).toBe("applied");
+    for (const invalid of [
+      { ...body, versions: [-1] },
+      { ...body, key: "../../file" },
+      { ...body, seriesName: "Wrong kind" },
+    ]) {
+      expect(
+        (
+          await fetch(`${baseUrl}/v1/library/reset-cover`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(invalid),
+          })
+        ).status,
+      ).toBe(400);
+    }
+    expect(libraryService.resetPresentationCover).toHaveBeenCalledTimes(1);
+  });
+
   async function pairTestDevice(): Promise<string> {
     const pairing = server.createPairingCode();
     const response = await fetch(`${baseUrl}/v1/pair`, {

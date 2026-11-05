@@ -18,7 +18,13 @@ import type {
   CompanionSeriesAssignmentResult,
 } from "./companionServer.js";
 import { handleDeleteBook } from "../../handlers/bookHandler.js";
-import { DesktopPresentationService } from "./presentationService.js";
+import { handleGenerateThumbnail } from "../../handlers/thumbnailHandler.js";
+import {
+  DesktopPresentationService,
+  CoverResetConflict,
+  seriesCoverPresentationKey,
+  seriesPresentationKey,
+} from "./presentationService.js";
 import type { PresentationMutation } from "../../../types/presentation.js";
 
 const IMAGE_EXTENSIONS = new Set([
@@ -337,6 +343,52 @@ export class DesktopLibraryService implements CompanionLibraryService {
         success: false,
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  async resetPresentationCover(
+    deviceId: string,
+    input: {
+      key: string;
+      mutationId: string;
+      versions: number[];
+      seriesName?: string;
+    },
+  ) {
+    const series = input.seriesName !== undefined;
+    const row = series
+      ? await this.database("SeriesCollection")
+          .where("name", input.seriesName)
+          .first()
+      : input.key.startsWith("hitomi:")
+        ? await this.database("Book")
+            .where("hitomi_id", input.key.slice(7))
+            .first()
+        : await this.database("Book")
+            .where("sync_id", input.key.slice(5))
+            .first();
+    if (!row) return { mutationId: input.mutationId, status: "not_found" };
+    const keys = series
+      ? [seriesCoverPresentationKey(row.name), seriesPresentationKey(row.name)]
+      : [input.key];
+    if (keys[0] !== input.key || input.versions.length !== keys.length)
+      throw new Error("Invalid cover target");
+    try {
+      const ids = await this.presentations.resetCover(
+        keys,
+        series ? undefined : row.id,
+        series ? row.id : undefined,
+        { deviceId, mutationId: input.mutationId, versions: input.versions },
+      );
+      for (const id of ids) {
+        const book = await this.database("Book").where("id", id).first();
+        if (book && !book.is_offline) await handleGenerateThumbnail(id);
+      }
+      return { mutationId: input.mutationId, status: "applied" };
+    } catch (error) {
+      if (error instanceof CoverResetConflict)
+        return { mutationId: input.mutationId, status: "conflict" };
+      throw error;
     }
   }
 

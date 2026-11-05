@@ -179,6 +179,40 @@ describe("presentation storage and transfer", () => {
       (await db("Book").where("id", book.id).first()).cover_path,
     ).toBeNull();
   });
+  it("resets once per request and rejects stale reset versions", async () => {
+    await seedBook(db, { hitomi_id: "123" });
+    await service.apply("phone", {
+      mutationId: "reset-version-initial",
+      baseVersion: 0,
+      value: value(),
+    });
+    const image = await sharp({
+      create: { width: 10, height: 10, channels: 3, background: "yellow" },
+    })
+      .png()
+      .toBuffer();
+    const cover = await service.changeCover("hitomi:123", "Ignored", image);
+    const request = {
+      deviceId: "synthetic-device",
+      mutationId: "synthetic-reset",
+      versions: [cover.value.version],
+    };
+    await service.resetCover(["hitomi:123"], undefined, undefined, request);
+    const version = (await service.get("hitomi:123"))!.version;
+    await service.resetCover(["hitomi:123"], undefined, undefined, request);
+    expect((await service.get("hitomi:123"))!.version).toBe(version);
+    const newer = await service.changeCover("hitomi:123", "Ignored", image);
+    await service.resetCover(["hitomi:123"], undefined, undefined, request);
+    expect((await service.get("hitomi:123"))!.coverHash).toBe(
+      newer.value.coverHash,
+    );
+    await expect(
+      service.resetCover(["hitomi:123"], undefined, undefined, {
+        ...request,
+        mutationId: "another-reset",
+      }),
+    ).rejects.toThrow("Cover changed");
+  });
   afterAll(async () => {
     await db.destroy();
     await fs.rm(directory, { recursive: true, force: true });

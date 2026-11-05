@@ -33,6 +33,8 @@ export const isPresentationCoverPath = (value: string) =>
   path.basename(path.dirname(value)) === "presentation-covers" &&
   /^[a-f0-9]{64}\.image$/.test(path.basename(value));
 
+export class CoverResetConflict extends Error {}
+
 export class DesktopPresentationService {
   constructor(
     private readonly database: Knex,
@@ -372,11 +374,36 @@ export class DesktopPresentationService {
     keys: string[],
     bookId?: number,
     seriesId?: number,
+    request?: { deviceId: string; mutationId: string; versions: number[] },
   ): Promise<number[]> {
     const hashes = new Set<string>();
     const affectedBooks: number[] = [];
     const changedKeys: string[] = [];
     await this.database.transaction(async (trx) => {
+      const requestHash = digest(
+        JSON.stringify({ keys, bookId, seriesId, versions: request?.versions }),
+      );
+      if (request) {
+        const receipt = await trx("PresentationMutation")
+          .where({
+            device_id: `reset:${request.deviceId}`,
+            mutation_id: request.mutationId,
+          })
+          .first();
+        if (receipt) {
+          if (receipt.request_hash !== requestHash)
+            throw new Error("Mutation ID reused");
+          affectedBooks.push(...JSON.parse(receipt.result).bookIds);
+          return;
+        }
+        for (const [index, key] of keys.entries()) {
+          const current = await trx<Row>("GalleryPresentation")
+            .where("resource_key", key)
+            .first();
+          if ((current?.version ?? 0) !== request.versions[index])
+            throw new CoverResetConflict("Cover changed on PC");
+        }
+      }
       for (const key of keys) {
         const row = await trx<Row>("GalleryPresentation")
           .where("resource_key", key)
@@ -397,7 +424,14 @@ export class DesktopPresentationService {
           for (const book of books) {
             if (book.cover_path && isPresentationCoverPath(book.cover_path))
               hashes.add(path.basename(book.cover_path, ".image"));
-            await trx("Book").where("id", book.id).update({ cover_path: null });
+            await trx("Book")
+              .where("id", book.id)
+              .update({
+                cover_path: null,
+                state_version: trx.raw("coalesce(state_version, 0) + 1"),
+                state_updated_at: trx.fn.now(),
+                updated_by_device_id: "metadata",
+              });
             affectedBooks.push(book.id);
           }
         }
@@ -416,9 +450,23 @@ export class DesktopPresentationService {
         const book = await trx("Book").where("id", bookId).first();
         if (book?.cover_path && isPresentationCoverPath(book.cover_path))
           hashes.add(path.basename(book.cover_path, ".image"));
-        await trx("Book").where("id", bookId).update({ cover_path: null });
+        await trx("Book")
+          .where("id", bookId)
+          .update({
+            cover_path: null,
+            state_version: trx.raw("coalesce(state_version, 0) + 1"),
+            state_updated_at: trx.fn.now(),
+            updated_by_device_id: "metadata",
+          });
         affectedBooks.push(bookId);
       }
+      if (request)
+        await trx("PresentationMutation").insert({
+          device_id: `reset:${request.deviceId}`,
+          mutation_id: request.mutationId,
+          request_hash: requestHash,
+          result: JSON.stringify({ bookIds: affectedBooks }),
+        });
     });
     for (const key of changedKeys) notifyCompanionLibraryChanged(true, key);
     for (const hash of hashes) {
