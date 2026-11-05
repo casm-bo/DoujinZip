@@ -8,10 +8,7 @@ import { Worker } from "node:worker_threads"; // Worker 임포트
 import db from "../db/index.js";
 import { console } from "../main.js";
 import { isImageFile, sortImageFiles } from "../utils/imageFiles.js";
-import {
-  broadcastScanProgress,
-  extractCoverFromZip,
-} from "./directoryHandler.js";
+import { broadcastScanProgress } from "./directoryHandler.js";
 import type { LibraryScanProgress } from "../../types/ipc.js";
 import { isPresentationCoverPath } from "../services/companion/presentationService.js";
 
@@ -117,7 +114,6 @@ export async function generateThumbnailForBook(bookId: number) {
   }
 
   let sourcePath: string | null = null;
-  let tempSourcePath: string | undefined;
   const ext = path.extname(book.path).toLowerCase();
 
   try {
@@ -134,17 +130,8 @@ export async function generateThumbnailForBook(bookId: number) {
         sourcePath = path.join(book.path, imageFiles[0]);
       }
     } else if (ext === ".cbz" || ext === ".zip") {
-      // 3-2. ZIP/CBZ 파일인 경우: 압축을 풀어 커버 이미지를 임시 폴더에 저장 후 사용
-      await fs.mkdir(path.join(app.getPath("userData"), "temp_cover"), {
-        recursive: true,
-      });
-      const tempCoverPath = path.join(
-        app.getPath("userData"),
-        "temp_cover",
-        `${book.id}_temp_cover.webp`,
-      );
-      sourcePath = await extractCoverFromZip(book.path, tempCoverPath);
-      tempSourcePath = sourcePath ?? undefined;
+      // ZIP/CBZ의 첫 페이지는 워커에서 메모리로 읽는다.
+      sourcePath = book.path;
     } else if (isImageFile(book.path)) {
       // 3-3. 단일 이미지 파일인 경우: 해당 파일을 직접 소스로 사용
       sourcePath = book.path;
@@ -192,7 +179,6 @@ export async function generateThumbnailForBook(bookId: number) {
         sourcePath,
         thumbnailPath,
         bookId,
-        tempSourcePath,
         thumbnailDirPath: thumbnailDir,
       });
     });

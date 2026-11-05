@@ -413,10 +413,6 @@ app.whenReady().then(async () => {
     console.error("[Main] 앱 사용 시간 추적 시작 실패:", error);
   }
 
-  await fs.mkdir(path.join(app.getPath("userData"), "temp_cover"), {
-    recursive: true,
-  });
-
   // 앱 종료 시 외부 프로그램 임시 파일 정리
   app.on("before-quit", () => {
     const tempExternalDir = path.join(app.getPath("userData"), "temp_external");

@@ -15,7 +15,6 @@ import type {
   MetadataRescanMode,
 } from "../../types/ipc.js";
 import { isImageFile, sortImageFiles } from "../utils/imageFiles.js";
-import { readZipPage } from "../utils/zipPages.js";
 import { normalizeArtistName } from "../utils/artistName.js";
 import { filterLibraryPathRows } from "../utils/libraryPath.js";
 import { normalizeTagName } from "../utils/tagName.js";
@@ -110,17 +109,6 @@ async function loadZipScanCache(directoryPath: string): Promise<
     });
   }
   return map;
-}
-
-export async function extractCoverFromZip(
-  zipPath: string,
-  outputPath: string,
-): Promise<string | null> {
-  const page = await readZipPage(zipPath, 0);
-  if (!page) return null;
-
-  await fs.writeFile(outputPath, page.buffer);
-  return outputPath;
 }
 
 // ZIP 파일을 한 번 열어 info.txt 내용과 이미지 개수를 단일 엔트리 순회로 동시에 수집한다.

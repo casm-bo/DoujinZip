@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import sharp from "sharp";
 import { parentPort } from "worker_threads";
+import { readZipPage } from "../utils/zipPages.js";
 
 if (parentPort) {
   parentPort.on(
@@ -9,16 +10,9 @@ if (parentPort) {
       sourcePath: string;
       thumbnailPath: string;
       bookId: number;
-      tempSourcePath?: string;
       thumbnailDirPath: string;
     }) => {
-      const {
-        sourcePath,
-        thumbnailPath,
-        bookId,
-        tempSourcePath,
-        thumbnailDirPath,
-      } = task;
+      const { sourcePath, thumbnailPath, bookId, thumbnailDirPath } = task;
       const pendingThumbnailPath = `${thumbnailPath}.tmp`;
 
       let result:
@@ -30,7 +24,10 @@ if (parentPort) {
         await fs.mkdir(thumbnailDirPath, { recursive: true });
 
         // 원본 이미지를 버퍼로 읽어 sharp에 전달하여 파일 핸들 문제를 방지
-        const imageBuffer = await fs.readFile(sourcePath);
+        const imageBuffer = /\.(cbz|zip)$/i.test(sourcePath)
+          ? (await readZipPage(sourcePath, 0))?.buffer
+          : await fs.readFile(sourcePath);
+        if (!imageBuffer) throw new Error("Archive has no cover image");
         await sharp(imageBuffer)
           .resize(512)
           .webp()
@@ -50,14 +47,6 @@ if (parentPort) {
         };
       } finally {
         await fs.rm(pendingThumbnailPath, { force: true }).catch(() => {});
-        if (tempSourcePath) {
-          await fs.unlink(tempSourcePath).catch((unlinkError) => {
-            console.warn(
-              `[Worker] Failed to delete temporary source file ${tempSourcePath}:`,
-              unlinkError,
-            );
-          });
-        }
       }
       parentPort?.postMessage(result);
     },
