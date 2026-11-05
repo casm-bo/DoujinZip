@@ -80,6 +80,8 @@ describe("CompanionServer", () => {
       downloadService,
       libraryService,
       syncService,
+      undefined,
+      async () => "library-fixture",
     );
     const status = await server.start(0);
     baseUrl = `http://127.0.0.1:${status.port}`;
@@ -168,6 +170,27 @@ describe("CompanionServer", () => {
 
     expect((await request()).status).toBe(201);
     expect((await request()).status).toBe(401);
+  });
+
+  it("keeps a single library identity across separate pairings", async () => {
+    async function pair() {
+      const { code } = server.createPairingCode();
+      const response = await fetch(`${baseUrl}/v1/pair`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, deviceName: "Fixture phone" }),
+      });
+      return (await response.json()).data;
+    }
+    const first = await pair();
+    const second = await pair();
+    expect(first.device.id).not.toBe(second.device.id);
+    expect(first.libraryId).toBe("library-fixture");
+    expect(second.libraryId).toBe(first.libraryId);
+    const connection = await fetch(`${baseUrl}/v1/connection`, {
+      headers: { Authorization: `Bearer ${first.token}` },
+    });
+    expect((await connection.json()).data.libraryId).toBe(first.libraryId);
   });
 
   it("rate limits repeated invalid pairing attempts", async () => {

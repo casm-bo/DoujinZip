@@ -104,6 +104,11 @@ export const companionServer = new CompanionServer(
   ),
   new DesktopCompanionSyncService(db),
   new SubscriptionSyncService(db),
+  async () => {
+    const identity = await db("LibraryIdentity").where("singleton", 1).first();
+    if (!identity) throw new Error("Library identity is missing");
+    return identity.library_id;
+  },
 );
 companionServer.subscriptionChanged = (readsOnly) => {
   if (!readsOnly) broadcast("subscriptions-updated");

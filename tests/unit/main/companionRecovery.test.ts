@@ -25,6 +25,21 @@ describe("Android reinstall recovery", () => {
     await db.destroy();
   });
 
+  it("assigns a persistent identity per library database", async () => {
+    const other = await createTestDb();
+    try {
+      const identity = await db("LibraryIdentity").first();
+      expect(identity.library_id).toMatch(/^[a-f0-9-]{36}$/);
+      expect((await other("LibraryIdentity").first()).library_id).not.toBe(
+        identity.library_id,
+      );
+      await db.migrate.latest();
+      expect(await db("LibraryIdentity").first()).toEqual(identity);
+    } finally {
+      await other.destroy();
+    }
+  });
+
   it("restores server-saved series and all book state into a fresh bootstrap", async () => {
     const book = await seedBook(db, { page_count: 20 });
     const stored = await db("Book").where("id", book.id).first();

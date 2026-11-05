@@ -222,6 +222,7 @@ export class CompanionServer {
     private readonly libraryService?: CompanionLibraryService,
     private readonly syncService?: CompanionSyncService,
     private readonly subscriptionService?: import("../subscription/subscriptionSync.js").SubscriptionSyncService,
+    private readonly getLibraryId?: () => Promise<string>,
   ) {}
 
   async start(port = DEFAULT_PORT): Promise<CompanionServerStatus> {
@@ -366,7 +367,11 @@ export class CompanionServer {
     if (request.method === "GET" && pathname === "/v1/connection") {
       this.sendJson(response, 200, {
         success: true,
-        data: { connected: true, serverTime: new Date().toISOString() },
+        data: {
+          connected: true,
+          serverTime: new Date().toISOString(),
+          libraryId: await this.getLibraryId?.(),
+        },
       });
       return;
     }
@@ -980,6 +985,7 @@ export class CompanionServer {
 
     this.pairingState = null;
     this.pairingAttempts.delete(remoteAddress);
+    const libraryId = await this.getLibraryId?.();
     const token = randomBytes(32).toString("base64url");
     const now = new Date().toISOString();
     const device: CompanionDevice = {
@@ -997,6 +1003,7 @@ export class CompanionServer {
       data: {
         device: toDeviceInfo(device, this.getDeviceConnectionState(device.id)),
         token,
+        libraryId,
       },
     });
   }
