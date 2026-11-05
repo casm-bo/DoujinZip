@@ -91,7 +91,7 @@ const stopPresentationUpdates = ipcRenderer.on(
 
 // 썸네일 그리드 줌 스타일
 const downloaderGridStyle = computed(() => ({
-  zoom: uiStore.thumbnailZoom,
+  zoom: uiStore.thumbnailZoom * 1.5,
   gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
 }));
 

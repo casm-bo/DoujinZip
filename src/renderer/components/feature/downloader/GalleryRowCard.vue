@@ -98,7 +98,7 @@ const { borderStyle } = useGalleryBorders();
     />
     <div
       data-row-cover
-      :style="{ width: `${160 * (thumbnailZoom ?? 1)}px` }"
+      :style="{ width: `${240 * (thumbnailZoom ?? 1)}px` }"
       class="bg-muted relative aspect-[0.72] max-w-[40%] shrink-0 cursor-zoom-in overflow-hidden rounded-xl"
       @click.stop="preview($event)"
     >
@@ -230,13 +230,13 @@ const { borderStyle } = useGalleryBorders();
         </p>
       </div>
       <!-- 태그 -->
-      <div class="flex max-h-14 flex-wrap gap-1 overflow-hidden">
+      <div class="flex flex-wrap items-start gap-1">
         <button
           v-for="tag in props.gallery.tags"
           :key="`${tag.type}:${tag.name}`"
           type="button"
           :class="getTagDisplayInfo(tag).className"
-          class="cursor-pointer hover:underline"
+          class="max-w-full cursor-pointer break-words whitespace-normal hover:underline"
           @click.stop="
             copyToClipboard(
               `${tag.type === 'male' || tag.type === 'female' ? tag.type : 'tag'}:${tag.name}`,

@@ -113,12 +113,12 @@ for (const component of [Grid, Row]) {
     if (component === Row) {
       expect(
         host.querySelector<HTMLElement>("[data-row-cover]")?.style.width,
-      ).toBe("160px");
+      ).toBe("240px");
       zoom.value = 1.2;
       await nextTick();
       expect(
         host.querySelector<HTMLElement>("[data-row-cover]")?.style.width,
-      ).toBe("192px");
+      ).toBe("288px");
     }
   });
 }

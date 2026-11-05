@@ -15,8 +15,20 @@ export const useUiStore = defineStore("ui", () => {
   const screenRotation = ref<0 | 90 | 180 | 270>(0);
 
   // 썸네일 줌 배율
-  const thumbnailZoom = ref(
-    Number(localStorage.getItem("thumbnailZoom")) || THUMBNAIL_ZOOM_DEFAULT,
+  const storedZoom = localStorage.getItem("thumbnailZoomV2");
+  const legacyZoom = localStorage.getItem("thumbnailZoom");
+  // The former 150% size is now 100%; retain the saved physical size when possible.
+  const initialZoom =
+    storedZoom !== null
+      ? Number(storedZoom)
+      : legacyZoom !== null
+        ? Number(legacyZoom) / 1.5
+        : THUMBNAIL_ZOOM_DEFAULT;
+  const thumbnailZoom = ref(THUMBNAIL_ZOOM_DEFAULT);
+  setThumbnailZoom(
+    Number.isFinite(initialZoom) && initialZoom > 0
+      ? initialZoom
+      : THUMBNAIL_ZOOM_DEFAULT,
   );
   const libraryRandomSeed = ref(Math.floor(Math.random() * 2 ** 30));
 
@@ -61,7 +73,7 @@ export const useUiStore = defineStore("ui", () => {
   });
 
   watch(thumbnailZoom, (newValue) => {
-    localStorage.setItem("thumbnailZoom", String(newValue));
+    localStorage.setItem("thumbnailZoomV2", String(newValue));
   });
 
   return {

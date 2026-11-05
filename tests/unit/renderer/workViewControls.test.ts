@@ -29,7 +29,7 @@ it("changes and persists size in list mode and retains it when switching views",
   find("카드 확대").click();
   await nextTick();
   expect(store.thumbnailZoom).toBe(1.1);
-  expect(localStorage.getItem("thumbnailZoom")).toBe("1.1");
+  expect(localStorage.getItem("thumbnailZoomV2")).toBe("1.1");
   find("썸네일 뷰").click();
   await nextTick();
   expect(view.value).toBe("grid");
@@ -45,4 +45,21 @@ it("changes and persists size in list mode and retains it when switching views",
   store.setThumbnailZoom(0.4);
   await nextTick();
   expect(find("카드 축소").disabled).toBe(true);
+});
+
+it("migrates the old 150% preference to the new 100% baseline", () => {
+  localStorage.clear();
+  localStorage.setItem("thumbnailZoom", "1.5");
+  setActivePinia(createPinia());
+  expect(useUiStore().thumbnailZoom).toBe(1);
+});
+it("prefers new scale settings and rejects invalid saved values", () => {
+  localStorage.clear();
+  localStorage.setItem("thumbnailZoom", "1.5");
+  localStorage.setItem("thumbnailZoomV2", "1.2");
+  setActivePinia(createPinia());
+  expect(useUiStore().thumbnailZoom).toBe(1.2);
+  localStorage.setItem("thumbnailZoomV2", "Infinity");
+  setActivePinia(createPinia());
+  expect(useUiStore().thumbnailZoom).toBe(1);
 });

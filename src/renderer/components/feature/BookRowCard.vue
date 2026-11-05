@@ -221,7 +221,7 @@ const { borderStyle } = useGalleryBorders();
     />
     <div
       data-row-cover
-      :style="{ width: `${160 * (thumbnailZoom ?? 1)}px` }"
+      :style="{ width: `${240 * (thumbnailZoom ?? 1)}px` }"
       class="bg-muted relative aspect-[0.72] max-w-[40%] shrink-0 overflow-hidden rounded-xl"
     >
       <img
@@ -348,15 +348,13 @@ const { borderStyle } = useGalleryBorders();
         </p>
       </div>
       <!-- 태그 -->
-      <div
-        v-if="!hideTags"
-        class="flex max-h-14 flex-wrap gap-1 overflow-hidden"
-      >
+      <div v-if="!hideTags" class="flex flex-wrap items-start gap-1">
         <button
           v-for="tag in book.tags"
           :key="tag.name"
           type="button"
           :class="getTagDisplayInfo(tag).className"
+          class="max-w-full break-words whitespace-normal"
           @click.stop="emit('selectTag', tag.name)"
           @contextmenu.prevent.stop="emit('excludeTag', tag.name)"
         >

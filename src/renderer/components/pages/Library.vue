@@ -771,7 +771,7 @@ const handleGridWheel = (event: WheelEvent) => {
 
 // 썸네일 그리드 스타일 (줌 + auto-fill로 카드 자체가 작아짐)
 const gridStyle = computed(() => ({
-  zoom: uiStore.thumbnailZoom,
+  zoom: uiStore.thumbnailZoom * 1.5,
   gridTemplateColumns: "repeat(auto-fill, minmax(184px, 1fr))",
 }));
 
