@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { normalizeArtistSearchQuery } from "../../../src/shared/search";
+import { isSyncedSubscription } from "../../../src/main/services/subscription/subscriptionSync";
 import {
   normalizeQuery,
   validateSubscriptionQuery,
@@ -20,4 +21,15 @@ it("validates and deduplicates both subscription spellings", () => {
   expect(normalizeQuery("artist:hi hello")).toBe(
     normalizeQuery("artist:hi_hello"),
   );
+  expect(
+    isSyncedSubscription({
+      id: "example",
+      name: "Example",
+      query: "artist:hi hello female:sole_female",
+      languages: [],
+      enabled: true,
+      deleted: false,
+      version: 1,
+    }),
+  ).toBe(true);
 });

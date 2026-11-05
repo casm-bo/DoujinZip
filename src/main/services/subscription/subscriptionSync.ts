@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import { normalizeQuery } from "./query.js";
+import { normalizeArtistSearchQuery } from "../../../shared/search.js";
 
 export interface SyncedSubscription {
   id: string;
@@ -52,7 +53,7 @@ export function isSyncedSubscription(
     v.version < 0
   )
     return false;
-  const terms = v.query.trim().split(/\s+/);
+  const terms = normalizeArtistSearchQuery(v.query).trim().split(/\s+/);
   return (
     !v.enabled ||
     v.deleted ||
