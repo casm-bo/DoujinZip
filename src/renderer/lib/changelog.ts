@@ -15,6 +15,18 @@ export interface Changelog {
  */
 export const changelogData: Changelog[] = [
   {
+    version: "2.8.1",
+    changes: [
+      {
+        type: "fix",
+        title: "오류 발생 시 앱 종료",
+        items: [
+          "시작 오류 등 처리되지 않은 메인 프로세스 오류 발생 시 오류창을 닫으면 앱 프로세스도 종료됩니다.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.8.0",
     changes: [
       {
