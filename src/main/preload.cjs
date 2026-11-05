@@ -96,6 +96,7 @@ const invokeChannels = new Set([
   "run-companion-sync",
   "run-series-detection",
   "search-galleries",
+  "get-hitomi-languages",
   "select-external-archive-viewer",
   "select-external-image-viewer",
   "select-folder",

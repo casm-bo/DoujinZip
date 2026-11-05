@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { withLanguage } from "@/lib/subscriptionQuery";
+import { useHitomiLanguages } from "@/composable/useHitomiLanguages";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -109,13 +110,13 @@ const downloaderLanguage = ref("korean");
 type Popularity = "none" | "day" | "week" | "month" | "year";
 const downloaderPopularity = ref<Popularity>("none");
 
-const languageOptions = [
-  { value: "all", label: "전체 언어" },
-  { value: "korean", label: "한국어" },
-  { value: "japanese", label: "일본어" },
-  { value: "english", label: "영어" },
-  { value: "chinese", label: "중국어" },
-];
+const {
+  languageOptions,
+  error: languageError,
+  loading: languagesLoading,
+  load: loadLanguages,
+} = useHitomiLanguages();
+onMounted(loadLanguages);
 
 const popularityOptions = [
   { value: "none", label: "기본순" },
@@ -743,6 +744,20 @@ useSearchPersistence(searchQuery, "downloader-search-query");
           @keydown.esc.stop="conditionPanel = null"
         >
           <template v-if="conditionPanel === 'language'">
+            <p
+              v-if="languageError"
+              class="text-destructive text-sm"
+              role="alert"
+            >
+              {{ languageError }}
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="languagesLoading"
+                @click="loadLanguages"
+                >다시 시도</Button
+              >
+            </p>
             <Label for="language-select">검색 언어</Label>
             <Select
               :model-value="downloaderLanguage"

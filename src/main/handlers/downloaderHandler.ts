@@ -1,4 +1,5 @@
 import PQueue from "p-queue";
+import { getAvailableLanguages } from "../services/hitomi/languages.js";
 import { DownloadArchive } from "../utils/downloadArchive.js";
 import { ipcMain } from "electron";
 import fs from "fs/promises";
@@ -578,6 +579,16 @@ export const handleDownloadTempThumbnail = async ({
  * 다운로더 관련 IPC 통신 핸들러를 등록합니다.
  */
 export async function registerDownloaderHandlers() {
+  ipcMain.handle("get-hitomi-languages", async () => {
+    try {
+      return { success: true, data: await getAvailableLanguages() };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
   // 작품 검색 핸들러
   ipcMain.handle("search-galleries", (_event, params) =>
     handleSearchGalleries(params),

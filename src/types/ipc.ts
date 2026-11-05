@@ -646,6 +646,14 @@ export interface IpcChannels {
   };
 
   // Downloader handlers
+  "get-hitomi-languages": {
+    request: void;
+    response: {
+      success: boolean;
+      data?: { value: string; label: string }[];
+      error?: string;
+    };
+  };
   "search-galleries": {
     request: {
       query?: { searchQuery: string; offset?: number };
