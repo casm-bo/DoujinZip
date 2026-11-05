@@ -17,6 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+} from "@/components/ui/context-menu";
+import * as api from "@/api";
 import { Input } from "@/components/ui/input";
 import { Icon } from "@iconify/vue";
 import { useMutation, useQuery } from "@tanstack/vue-query";
@@ -282,6 +289,23 @@ const handleBookClick = (book: Book) => {
   selectedEpisode.value = book;
   showEpisodeDetail.value = true;
 };
+
+const runBookAction = async (action: () => Promise<unknown>) => {
+  try {
+    await action();
+    await handleEpisodeUpdated();
+  } catch (error) {
+    toast.error(`작업 실패: ${(error as Error).message}`);
+  }
+};
+const toggleEpisodeRead = (book: Book) =>
+  runBookAction(async () => {
+    const result = await ipcRenderer.invoke("set-book-read", {
+      bookId: book.id,
+      isRead: !book.is_read,
+    });
+    if (!result.success) throw new Error("읽음 상태 변경에 실패했습니다.");
+  });
 
 const firstBook = computed(() => books.value[0] || null);
 const resumeTarget = computed(() => getSeriesResumeTarget(books.value));
@@ -663,137 +687,195 @@ const excludeBookIds = computed(() => books.value.map((book) => book.id));
                   class="bg-primary h-0.5 rounded-full transition-all"
                 />
 
-                <div
-                  class="group flex items-stretch gap-3 rounded-lg border p-2 transition-colors"
-                  :class="{
-                    'opacity-40': draggedIndex === index,
-                    'hover:bg-accent/50': draggedIndex !== index,
-                  }"
-                  draggable="true"
-                  @dragstart="handleDragStart(index)"
-                  @dragover="handleDragOver($event, index)"
-                  @dragleave="handleDragLeave"
-                  @drop="handleDrop(index)"
-                  @dragend="handleDragEnd"
-                >
-                  <!-- 썸네일 -->
-                  <div
-                    class="bg-muted relative h-20 w-14 shrink-0 cursor-pointer overflow-hidden rounded"
-                    @click="handleBookClick(book)"
-                  >
-                    <img
-                      v-if="getCoverUrl(book)"
-                      :src="getCoverUrl(book)"
-                      :alt="book.title"
-                      class="h-full w-full object-cover"
-                      @error="
-                        (e) =>
-                          ((e.target as HTMLImageElement).style.display =
-                            'none')
-                      "
-                    />
+                <ContextMenu>
+                  <ContextMenuTrigger as-child>
                     <div
-                      v-else
-                      class="flex h-full w-full items-center justify-center"
+                      class="group flex items-stretch gap-3 rounded-lg border p-2 transition-colors"
+                      :class="{
+                        'opacity-40': draggedIndex === index,
+                        'hover:bg-accent/50': draggedIndex !== index,
+                      }"
+                      draggable="true"
+                      @dragstart="handleDragStart(index)"
+                      @dragover="handleDragOver($event, index)"
+                      @dragleave="handleDragLeave"
+                      @drop="handleDrop(index)"
+                      @dragend="handleDragEnd"
                     >
-                      <Icon
-                        icon="solar:book-bold-duotone"
-                        class="text-muted-foreground/30 h-8 w-8"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- 책 정보 (클릭 가능) -->
-                  <div
-                    class="min-w-0 flex-1 basis-0 cursor-pointer overflow-hidden py-0.5"
-                    @click="handleBookClick(book)"
-                  >
-                    <div
-                      class="hover:text-primary w-full truncate text-sm font-medium transition-colors"
-                    >
-                      {{ book.title }}
-                    </div>
-                    <div
-                      class="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs"
-                    >
-                      <span
-                        v-if="getArtistNames(book)"
-                        class="flex items-center gap-1"
+                      <!-- 썸네일 -->
+                      <div
+                        class="bg-muted relative h-20 w-14 shrink-0 cursor-pointer overflow-hidden rounded"
+                        @click="handleBookClick(book)"
                       >
-                        <Icon icon="solar:user-bold-duotone" class="h-3 w-3" />
-                        {{ getArtistNames(book) }}
-                      </span>
-                      <span
-                        v-if="book.page_count"
-                        class="flex items-center gap-1"
-                      >
-                        <Icon
-                          icon="solar:document-text-bold-duotone"
-                          class="h-3 w-3"
+                        <img
+                          v-if="getCoverUrl(book)"
+                          :src="getCoverUrl(book)"
+                          :alt="book.title"
+                          class="h-full w-full object-cover"
+                          @error="
+                            (e) =>
+                              ((e.target as HTMLImageElement).style.display =
+                                'none')
+                          "
                         />
-                        {{ book.page_count }}페이지
-                      </span>
-                    </div>
-                  </div>
+                        <div
+                          v-else
+                          class="flex h-full w-full items-center justify-center"
+                        >
+                          <Icon
+                            icon="solar:book-bold-duotone"
+                            class="text-muted-foreground/30 h-8 w-8"
+                          />
+                        </div>
+                      </div>
 
-                  <!-- 순서 + 정렬 버튼 -->
-                  <div
-                    class="flex shrink-0 flex-col items-center justify-center gap-0.5"
-                    @click.stop
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="h-5 w-5"
-                      :disabled="index === 0"
-                      @click="moveBook(index, 'up')"
-                    >
-                      <Icon
-                        icon="solar:alt-arrow-up-bold-duotone"
-                        class="h-3.5 w-3.5"
-                      />
-                    </Button>
-                    <span class="text-muted-foreground text-xs font-semibold">
-                      {{ index + 1 }}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="h-5 w-5"
-                      :disabled="index === books.length - 1"
-                      @click="moveBook(index, 'down')"
-                    >
-                      <Icon
-                        icon="solar:alt-arrow-down-bold-duotone"
-                        class="h-3.5 w-3.5"
-                      />
-                    </Button>
-                  </div>
+                      <!-- 책 정보 (클릭 가능) -->
+                      <div
+                        class="min-w-0 flex-1 basis-0 cursor-pointer overflow-hidden py-0.5"
+                        @click="handleBookClick(book)"
+                      >
+                        <div
+                          class="hover:text-primary w-full truncate text-sm font-medium transition-colors"
+                        >
+                          {{ book.title }}
+                        </div>
+                        <div
+                          class="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs"
+                        >
+                          <span
+                            v-if="getArtistNames(book)"
+                            class="flex items-center gap-1"
+                          >
+                            <Icon
+                              icon="solar:user-bold-duotone"
+                              class="h-3 w-3"
+                            />
+                            {{ getArtistNames(book) }}
+                          </span>
+                          <span
+                            v-if="book.page_count"
+                            class="flex items-center gap-1"
+                          >
+                            <Icon
+                              icon="solar:document-text-bold-duotone"
+                              class="h-3 w-3"
+                            />
+                            {{ book.page_count }}페이지
+                          </span>
+                        </div>
+                      </div>
 
-                  <!-- 드래그 핸들 + 제거 버튼 -->
-                  <div
-                    class="flex shrink-0 flex-col items-center justify-center gap-1"
-                    @click.stop
-                  >
-                    <div class="cursor-grab active:cursor-grabbing">
-                      <Icon
-                        icon="solar:hamburger-menu-bold-duotone"
-                        class="text-muted-foreground h-4 w-4"
-                      />
+                      <!-- 순서 + 정렬 버튼 -->
+                      <div
+                        class="flex shrink-0 flex-col items-center justify-center gap-0.5"
+                        @click.stop
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="h-5 w-5"
+                          :disabled="index === 0"
+                          @click="moveBook(index, 'up')"
+                        >
+                          <Icon
+                            icon="solar:alt-arrow-up-bold-duotone"
+                            class="h-3.5 w-3.5"
+                          />
+                        </Button>
+                        <span
+                          class="text-muted-foreground text-xs font-semibold"
+                        >
+                          {{ index + 1 }}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="h-5 w-5"
+                          :disabled="index === books.length - 1"
+                          @click="moveBook(index, 'down')"
+                        >
+                          <Icon
+                            icon="solar:alt-arrow-down-bold-duotone"
+                            class="h-3.5 w-3.5"
+                          />
+                        </Button>
+                      </div>
+
+                      <!-- 드래그 핸들 + 제거 버튼 -->
+                      <div
+                        class="flex shrink-0 flex-col items-center justify-center gap-1"
+                        @click.stop
+                      >
+                        <div class="cursor-grab active:cursor-grabbing">
+                          <Icon
+                            icon="solar:hamburger-menu-bold-duotone"
+                            class="text-muted-foreground h-4 w-4"
+                          />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="text-muted-foreground hover:text-destructive h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+                          @click="handleRemoveBook(book.id)"
+                        >
+                          <Icon
+                            icon="solar:trash-bin-trash-bold-duotone"
+                            class="h-3.5 w-3.5"
+                          />
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      class="text-muted-foreground hover:text-destructive h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                      @click="handleRemoveBook(book.id)"
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem @select="toggleEpisodeRead(book)">{{
+                      book.is_read ? "읽지 않음으로 표시" : "읽음으로 표시"
+                    }}</ContextMenuItem>
+                    <ContextMenuItem
+                      @select="
+                        runBookAction(() =>
+                          api.toggleBookFavorite(book.id, !!book.is_favorite),
+                        )
+                      "
+                      >{{
+                        book.is_favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"
+                      }}</ContextMenuItem
                     >
-                      <Icon
-                        icon="solar:trash-bin-trash-bold-duotone"
-                        class="h-3.5 w-3.5"
-                      />
-                    </Button>
-                  </div>
-                </div>
+                    <ContextMenuItem
+                      :disabled="!!book.is_offline"
+                      @select="
+                        runBookAction(() => api.openBookFolder(book.path))
+                      "
+                      >파일 위치 열기</ContextMenuItem
+                    >
+                    <ContextMenuItem
+                      :disabled="!!book.is_offline"
+                      @select="api.openNewWindow(`/viewer/${book.id}`)"
+                      >새 창에서 열기</ContextMenuItem
+                    >
+                    <ContextMenuItem
+                      :disabled="!!book.is_offline"
+                      @select="
+                        runBookAction(() =>
+                          api.openBookWithExternalViewer(book.id),
+                        )
+                      "
+                      >외부 프로그램으로 열기</ContextMenuItem
+                    >
+                    <ContextMenuItem
+                      :disabled="!!book.is_offline"
+                      @select="
+                        runBookAction(() => api.rescanBookMetadata(book.id))
+                      "
+                      >메타데이터 재스캔</ContextMenuItem
+                    >
+                    <ContextMenuItem @select="handleBookClick(book)"
+                      >작품 상세</ContextMenuItem
+                    >
+                    <ContextMenuItem @select="handleRemoveBook(book.id)"
+                      >시리즈에서 제거</ContextMenuItem
+                    >
+                  </ContextMenuContent>
+                </ContextMenu>
 
                 <div
                   v-if="
