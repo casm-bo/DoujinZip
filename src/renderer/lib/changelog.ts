@@ -15,6 +15,32 @@ export interface Changelog {
  */
 export const changelogData: Changelog[] = [
   {
+    version: "2.8.0",
+    changes: [
+      {
+        type: "feature",
+        title: "동기화·백업",
+        items: [
+          "DB 고유 ID를 유지하고 백업에 포함하며, 같은 DB 재연결 시 저장 범위를 재사용합니다. 구독 충돌과 재구독 처리를 개선했습니다.",
+        ],
+      },
+      {
+        type: "feature",
+        title: "썸네일·캐시",
+        items: [
+          "잘못된 표지 경로를 수정하고 미리보기를 최대 256MB RAM 캐시로 전환했습니다. ZIP 표지는 메모리에서 추출하며 이전 임시 폴더를 정리합니다.",
+        ],
+      },
+      {
+        type: "feature",
+        title: "UI",
+        items: [
+          "연결 성공 시 페어링 코드를 닫고, 썸네일 재생성·메타데이터 재스캔 진행 상태를 표시합니다.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.7.0",
     changes: [
       {
