@@ -5,6 +5,17 @@ import {
   ipcRenderer,
   refreshSubscriptions,
 } from "@/api";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
+import { useGallerySelection } from "@/composable/useGallerySelection";
+import { isInputFocused } from "@/lib/keybindings/utils";
+import { hasOpenDialog } from "@/lib/utils";
 import HelpDialog from "@/components/common/HelpDialog.vue"; // HelpDialog 임포트
 import SmartSearchInput from "@/components/common/SmartSearchInput.vue";
 import { Button } from "@/components/ui/button";
@@ -243,6 +254,96 @@ const {
 const allGalleries = computed(() => {
   return data.value?.pages?.flatMap((page) => page.galleries) || [];
 });
+
+const {
+  selectedIds,
+  selected: selectedGalleries,
+  clear: clearSelection,
+  toggle: toggleSelection,
+  selectAll,
+  selectContext,
+} = useGallerySelection(allGalleries);
+watch([activeSource, sourceKey], clearSelection);
+const handleGalleryClick = (
+  gallery: HitomiGalleryDetails,
+  event: MouseEvent,
+) => {
+  selectedGallery.value = gallery;
+  if (
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    selectedIds.value.size
+  )
+    toggleSelection(gallery, event);
+  else handleSelectGallery(gallery);
+};
+const handleSelectionKey = (event: KeyboardEvent) => {
+  if (isInputFocused(event) || hasOpenDialog()) return;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+    event.preventDefault();
+    selectAll();
+  } else if (event.key === "Escape") clearSelection();
+};
+onMounted(() => window.addEventListener("keydown", handleSelectionKey));
+onUnmounted(() => window.removeEventListener("keydown", handleSelectionKey));
+const isBatchDownloading = ref(false);
+const downloadSelected = async () => {
+  if (isBatchDownloading.value) return;
+  const galleries = [...selectedGalleries.value];
+  isBatchDownloading.value = true;
+  let added = 0;
+  try {
+    const downloadPath = await ipcRenderer.invoke(
+      "get-config-value",
+      "downloadPath",
+    );
+    if (typeof downloadPath !== "string" || !downloadPath)
+      throw new Error("다운로드 폴더를 먼저 지정해주세요.");
+    for (const gallery of galleries) {
+      const status = downloadStatuses[gallery.id]?.status;
+      if (status && !["idle", "failed"].includes(status)) continue;
+      const existing = await ipcRenderer.invoke(
+        "check-book-exists-by-hitomi-id",
+        gallery.id,
+      );
+      if (!existing.success)
+        throw new Error(String(existing.error || "보유 여부 확인 실패"));
+      if (existing.exists) continue;
+      await downloadQueueStore.addToQueue({
+        galleryId: gallery.id,
+        galleryTitle: gallery.title.display,
+        galleryArtist: gallery.artists?.[0],
+        thumbnailUrl: gallery.thumbnailUrl,
+        downloadPath,
+      });
+      added++;
+    }
+    toast.success(`${added}개 작품을 다운로드 큐에 추가했습니다.`);
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : "큐 추가 실패", {
+      description: `${added}개 추가 완료`,
+    });
+  } finally {
+    isBatchDownloading.value = false;
+  }
+};
+const copySelected = async (links: boolean) => {
+  try {
+    await navigator.clipboard.writeText(
+      selectedGalleries.value
+        .map((gallery) =>
+          links
+            ? `https://hitomi.la/galleries/${gallery.id}.html`
+            : String(gallery.id),
+        )
+        .join("\n"),
+    );
+    toast.success("복사했습니다.");
+  } catch {
+    toast.error("클립보드 복사 실패");
+  }
+};
 
 // Intersection Observer 설정
 const observerTarget = ref<HTMLElement | null>(null);
@@ -783,6 +884,26 @@ useSearchPersistence(searchQuery, "downloader-search-query");
             {{ activeSource === "search" ? "검색 결과" : "구독 피드" }} · 현재
             {{ allGalleries.length }}개 표시
           </h2>
+          <div
+            v-if="selectedIds.size"
+            class="flex flex-wrap items-center gap-2"
+            role="toolbar"
+            aria-label="선택한 검색 결과"
+          >
+            <span class="text-sm">{{ selectedIds.size }}개 선택</span>
+            <Button
+              size="sm"
+              :disabled="isBatchDownloading"
+              @click="downloadSelected"
+              >선택 다운로드</Button
+            >
+            <Button size="sm" variant="outline" @click="selectAll"
+              >전체 선택</Button
+            >
+            <Button size="sm" variant="ghost" @click="clearSelection"
+              >선택 해제</Button
+            >
+          </div>
           <WorkViewControls
             :view-mode="viewMode"
             :zoom="uiStore.thumbnailZoom"
@@ -792,73 +913,115 @@ useSearchPersistence(searchQuery, "downloader-search-query");
           />
         </div>
 
-        <div
-          ref="resultScrollRef"
-          data-result-scroll
-          class="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-2"
-          @wheel="handleGridWheel"
-        >
-          <div v-if="isLoading" class="flex h-full items-center justify-center">
-            <p class="text-muted-foreground">
-              <Icon icon="svg-spinners:ring-resize" class="size-8" />
-            </p>
-          </div>
-          <div
-            v-else-if="isError"
-            class="text-destructive flex h-full items-center justify-center"
-          >
-            <p>오류 발생: {{ error?.message }}</p>
-          </div>
-          <div v-else-if="allGalleries.length > 0">
+        <ContextMenu>
+          <ContextMenuTrigger as-child>
             <div
-              v-if="viewMode === 'grid'"
-              class="grid gap-3"
-              :style="downloaderGridStyle"
+              ref="resultScrollRef"
+              data-result-scroll
+              class="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-2"
+              @wheel="handleGridWheel"
             >
-              <GalleryThumbnailCard
-                v-for="item in allGalleries"
-                :key="item.id"
-                :gallery="item"
-                :download-status="downloadStatuses[item.id]"
-                :selected="selectedGallery?.id === item.id"
-                @select-gallery="handleSelectGallery"
-                @preview-gallery="handleSelectGallery"
-                @book-deleted="handleBookDeleted"
-              />
+              <div
+                v-if="isLoading"
+                class="flex h-full items-center justify-center"
+              >
+                <p class="text-muted-foreground">
+                  <Icon icon="svg-spinners:ring-resize" class="size-8" />
+                </p>
+              </div>
+              <div
+                v-else-if="isError"
+                class="text-destructive flex h-full items-center justify-center"
+              >
+                <p>오류 발생: {{ error?.message }}</p>
+              </div>
+              <div v-else-if="allGalleries.length > 0">
+                <div
+                  v-if="viewMode === 'grid'"
+                  class="grid gap-3"
+                  :style="downloaderGridStyle"
+                >
+                  <GalleryThumbnailCard
+                    v-for="item in allGalleries"
+                    :key="item.id"
+                    :gallery="item"
+                    :download-status="downloadStatuses[item.id]"
+                    :selected="selectedIds.has(item.id)"
+                    @select-gallery="handleGalleryClick"
+                    @toggle-select="toggleSelection"
+                    @context-gallery="selectContext"
+                    @preview-gallery="handleSelectGallery"
+                    @book-deleted="handleBookDeleted"
+                  />
+                </div>
+                <div v-else class="flex flex-col gap-2">
+                  <GalleryRowCard
+                    v-for="item in allGalleries"
+                    :key="item.id"
+                    :gallery="item"
+                    :thumbnail-zoom="uiStore.thumbnailZoom"
+                    :download-status="downloadStatuses[item.id]"
+                    :selected="selectedIds.has(item.id)"
+                    @select-gallery="handleGalleryClick"
+                    @toggle-select="toggleSelection"
+                    @context-gallery="selectContext"
+                    @preview-gallery="handleSelectGallery"
+                    @book-deleted="handleBookDeleted"
+                  />
+                </div>
+                <div ref="observerTarget" class="h-px"></div>
+                <div
+                  v-if="isFetchingNextPage"
+                  class="text-muted-foreground py-4 text-center"
+                >
+                  <p>더 많은 결과 불러오는 중...</p>
+                </div>
+              </div>
+              <div v-else class="flex h-full items-center justify-center">
+                <p class="text-muted-foreground">
+                  {{
+                    activeSource === "search"
+                      ? searchKey === 0
+                        ? "검색어를 입력해 작품을 찾아보세요"
+                        : "검색 결과가 없습니다."
+                      : "구독한 작품이 없습니다."
+                  }}
+                </p>
+              </div>
             </div>
-            <div v-else class="flex flex-col gap-2">
-              <GalleryRowCard
-                v-for="item in allGalleries"
-                :key="item.id"
-                :gallery="item"
-                :thumbnail-zoom="uiStore.thumbnailZoom"
-                :download-status="downloadStatuses[item.id]"
-                :selected="selectedGallery?.id === item.id"
-                @select-gallery="handleSelectGallery"
-                @preview-gallery="handleSelectGallery"
-                @book-deleted="handleBookDeleted"
-              />
-            </div>
-            <div ref="observerTarget" class="h-px"></div>
-            <div
-              v-if="isFetchingNextPage"
-              class="text-muted-foreground py-4 text-center"
+          </ContextMenuTrigger>
+          <ContextMenuContent class="w-56">
+            <ContextMenuLabel>{{ selectedIds.size }}개 선택</ContextMenuLabel>
+            <ContextMenuItem
+              :disabled="selectedGalleries.length !== 1"
+              @select="handleSelectGallery(selectedGalleries[0])"
+              >미리보기</ContextMenuItem
             >
-              <p>더 많은 결과 불러오는 중...</p>
-            </div>
-          </div>
-          <div v-else class="flex h-full items-center justify-center">
-            <p class="text-muted-foreground">
-              {{
-                activeSource === "search"
-                  ? searchKey === 0
-                    ? "검색어를 입력해 작품을 찾아보세요"
-                    : "검색 결과가 없습니다."
-                  : "구독한 작품이 없습니다."
-              }}
-            </p>
-          </div>
-        </div>
+            <ContextMenuItem
+              :disabled="!selectedIds.size || isBatchDownloading"
+              @select="downloadSelected"
+              >선택 다운로드</ContextMenuItem
+            >
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              :disabled="!selectedIds.size"
+              @select="copySelected(true)"
+              >링크 복사</ContextMenuItem
+            >
+            <ContextMenuItem
+              :disabled="!selectedIds.size"
+              @select="copySelected(false)"
+              >갤러리 ID 복사</ContextMenuItem
+            >
+            <ContextMenuSeparator />
+            <ContextMenuItem @select="selectAll">전체 선택</ContextMenuItem>
+            <ContextMenuItem
+              :disabled="!selectedIds.size"
+              @select="clearSelection"
+              >선택 해제</ContextMenuItem
+            >
+          </ContextMenuContent>
+        </ContextMenu>
       </div>
     </div>
   </div>

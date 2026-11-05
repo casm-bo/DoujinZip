@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   enter: vi.fn(),
   refresh: vi.fn(),
+  addToQueue: vi.fn(async () => ({})),
 }));
 vi.mock("@/api", () => ({
   ipcRenderer: { invoke: mocks.invoke, on: () => () => {} },
@@ -25,6 +26,7 @@ vi.mock("@/store/uiStore", () => ({
 vi.mock("@/store/downloadQueueStore", () => ({
   useDownloadQueueStore: () => ({
     queue: [],
+    addToQueue: mocks.addToQueue,
     initialize: vi.fn(),
     cleanup: vi.fn(),
     fetchQueue: async () => {},
@@ -72,13 +74,17 @@ vi.mock("@/components/common/SmartSearchInput.vue", () => ({
 vi.mock("@/components/feature/downloader/GalleryThumbnailCard.vue", () => ({
   default: defineComponent({
     props: { gallery: Object },
-    emits: ["select-gallery"],
+    emits: ["select-gallery", "context-gallery"],
     setup:
       (props, { emit }) =>
       () =>
         h(
           "button",
-          { onClick: () => emit("select-gallery", props.gallery) },
+          {
+            onClick: (event: MouseEvent) =>
+              emit("select-gallery", props.gallery, event),
+            onContextmenu: () => emit("context-gallery", props.gallery),
+          },
           "작품",
         ),
   }),
@@ -86,13 +92,17 @@ vi.mock("@/components/feature/downloader/GalleryThumbnailCard.vue", () => ({
 vi.mock("@/components/feature/downloader/GalleryRowCard.vue", () => ({
   default: defineComponent({
     props: { gallery: Object },
-    emits: ["select-gallery"],
+    emits: ["select-gallery", "context-gallery"],
     setup:
       (props, { emit }) =>
       () =>
         h(
           "button",
-          { onClick: () => emit("select-gallery", props.gallery) },
+          {
+            onClick: (event: MouseEvent) =>
+              emit("select-gallery", props.gallery, event),
+            onContextmenu: () => emit("context-gallery", props.gallery),
+          },
           "작품",
         ),
   }),
@@ -130,9 +140,12 @@ it("opens conditions without searching and preserves search result scroll throug
     },
   );
   mocks.invoke.mockImplementation(
-    async (channel: string, arg: { page?: number } | number) => {
+    async (channel: string, arg: { page?: number } | number | string) => {
       if (channel === "get-config") return {};
-      if (channel === "get-config-value") return null;
+      if (channel === "get-config-value")
+        return arg === "downloadPath" ? "C:/downloads" : null;
+      if (channel === "check-book-exists-by-hitomi-id")
+        return { success: true, exists: false };
       if (channel === "search-galleries") {
         const page = (arg as { page: number }).page;
         return {
@@ -146,7 +159,12 @@ it("opens conditions without searching and preserves search result scroll throug
       if (channel === "get-gallery-details")
         return {
           success: true,
-          data: { id: arg, title: { display: "Synthetic" } },
+          data: {
+            id: arg,
+            title: { display: "Synthetic" },
+            artists: [],
+            thumbnailUrl: "",
+          },
         };
       return { success: true };
     },
@@ -185,6 +203,34 @@ it("opens conditions without searching and preserves search result scroll throug
       }),
     }),
   );
+  find("작품").dispatchEvent(
+    new MouseEvent("click", { bubbles: true, ctrlKey: true }),
+  );
+  await flush();
+  expect(host.querySelector('[role="toolbar"]')?.textContent).toContain(
+    "1개 선택",
+  );
+  find("선택 다운로드").click();
+  await flush();
+  expect(mocks.addToQueue).toHaveBeenCalledWith(
+    expect.objectContaining({ galleryId: 42, downloadPath: "C:/downloads" }),
+  );
+  document.body.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+  );
+  await flush();
+  expect(host.querySelector('[role="toolbar"]')).toBeNull();
+  document.body.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "a", ctrlKey: true, bubbles: true }),
+  );
+  await flush();
+  expect(host.querySelector('[role="toolbar"]')?.textContent).toContain(
+    "1개 선택",
+  );
+  document.body.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+  );
+  await flush();
   const result = host.querySelector<HTMLElement>("[data-result-scroll]")!;
   result.scrollTop = 123;
   result.dispatchEvent(new Event("scroll"));

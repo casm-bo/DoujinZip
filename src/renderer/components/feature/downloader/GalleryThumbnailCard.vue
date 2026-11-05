@@ -38,7 +38,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-  "select-gallery": [gallery: HitomiGalleryDetails];
+  "select-gallery": [gallery: HitomiGalleryDetails, event: MouseEvent];
+  "toggle-select": [gallery: HitomiGalleryDetails, event: MouseEvent];
+  "context-gallery": [gallery: HitomiGalleryDetails];
   "preview-gallery": [gallery: HitomiGalleryDetails];
   "book-deleted": [galleryId: number];
 }>();
@@ -64,6 +66,11 @@ const {
   copyToClipboard,
   permanentDelete,
 } = useGalleryCard(props, emit);
+const preview = (event: MouseEvent) => {
+  if (event.ctrlKey || event.metaKey || event.shiftKey)
+    emit("select-gallery", props.gallery, event);
+  else emit("preview-gallery", props.gallery);
+};
 const { borderStyle } = useGalleryBorders();
 const { getTagDisplayInfo } = useTagDisplay();
 </script>
@@ -71,16 +78,23 @@ const { getTagDisplayInfo } = useTagDisplay();
 <template>
   <article
     :data-gallery-id="gallery.id"
-    class="bg-card text-card-foreground flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border"
+    class="bg-card text-card-foreground relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border"
     :class="{ 'bg-selected-card ring-primary ring-2': selected }"
     :style="borderStyle()"
-    @click="emit('select-gallery', gallery)"
+    @click="emit('select-gallery', gallery, $event)"
+    @contextmenu="emit('context-gallery', gallery)"
   >
+    <Checkbox
+      :model-value="selected"
+      :aria-label="`${displayTitle} 선택`"
+      class="bg-background absolute top-2 left-2 z-10 size-5"
+      @click.stop="emit('toggle-select', gallery, $event)"
+    />
     <button
       type="button"
       class="bg-muted relative block aspect-[0.72] w-full overflow-hidden"
       :aria-label="`${displayTitle} 상세 보기`"
-      @click.stop="emit('preview-gallery', gallery)"
+      @click.stop="preview($event)"
     >
       <ProxiedImage
         :id="gallery.id"
@@ -93,11 +107,6 @@ const { getTagDisplayInfo } = useTagDisplay();
         v-if="selected"
         class="bg-selected-cover pointer-events-none absolute inset-0"
       />
-      <span
-        v-if="selected"
-        class="bg-primary text-primary-foreground absolute top-2 left-2 rounded-full p-1"
-        ><Icon icon="solar:check-read-linear" class="size-4"
-      /></span>
     </button>
     <div class="flex min-w-0 flex-1 flex-col gap-1 p-3">
       <button
@@ -105,7 +114,7 @@ const { getTagDisplayInfo } = useTagDisplay();
         data-detail-trigger
         class="line-clamp-2 min-h-10 text-left text-sm font-semibold"
         :title="displayTitle"
-        @click.stop="emit('preview-gallery', gallery)"
+        @click.stop="preview($event)"
       >
         {{ displayTitle }}
       </button>

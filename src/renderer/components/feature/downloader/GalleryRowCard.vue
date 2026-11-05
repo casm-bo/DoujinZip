@@ -39,7 +39,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-  "select-gallery": [gallery: HitomiGalleryDetails];
+  "select-gallery": [gallery: HitomiGalleryDetails, event: MouseEvent];
+  "toggle-select": [gallery: HitomiGalleryDetails, event: MouseEvent];
+  "context-gallery": [gallery: HitomiGalleryDetails];
   "preview-gallery": [gallery: HitomiGalleryDetails];
   "book-deleted": [galleryId: number];
 }>();
@@ -66,6 +68,11 @@ const {
   copyToClipboard,
   permanentDelete,
 } = useGalleryCard(props, emit);
+const preview = (event: MouseEvent) => {
+  if (event.ctrlKey || event.metaKey || event.shiftKey)
+    emit("select-gallery", props.gallery, event);
+  else emit("preview-gallery", props.gallery);
+};
 const { borderStyle } = useGalleryBorders();
 </script>
 
@@ -80,13 +87,20 @@ const { borderStyle } = useGalleryBorders();
     :style="{
       ...borderStyle(),
     }"
-    @click="emit('select-gallery', gallery)"
+    @click="emit('select-gallery', gallery, $event)"
+    @contextmenu="emit('context-gallery', gallery)"
   >
+    <Checkbox
+      :model-value="selected"
+      :aria-label="`${displayTitle} 선택`"
+      class="mt-1"
+      @click.stop="emit('toggle-select', gallery, $event)"
+    />
     <div
       data-row-cover
       :style="{ width: `${160 * (thumbnailZoom ?? 1)}px` }"
       class="bg-muted relative aspect-[0.72] max-w-[40%] shrink-0 cursor-zoom-in overflow-hidden rounded-xl"
-      @click.stop="emit('preview-gallery', gallery)"
+      @click.stop="preview($event)"
     >
       <ProxiedImage
         :id="props.gallery.id"
@@ -116,7 +130,7 @@ const { borderStyle } = useGalleryBorders();
         type="button"
         data-detail-trigger
         class="order-first line-clamp-2 min-h-10 text-left text-sm font-semibold"
-        @click.stop="emit('preview-gallery', gallery)"
+        @click.stop="preview($event)"
       >
         {{ displayTitle }}
       </button>
@@ -239,11 +253,7 @@ const { borderStyle } = useGalleryBorders();
       </div>
     </div>
     <div class="flex shrink-0 flex-col gap-2 max-[1000px]:max-w-24">
-      <Button
-        size="sm"
-        variant="outline"
-        @click.stop="emit('preview-gallery', gallery)"
-      >
+      <Button size="sm" variant="outline" @click.stop="preview($event)">
         <Icon icon="solar:eye-bold-duotone" class="h-4 w-4" />
         미리보기
       </Button>

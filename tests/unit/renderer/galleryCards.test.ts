@@ -40,6 +40,8 @@ for (const component of [Grid, Row]) {
     const zoom = ref(1);
     const select = vi.fn(),
       preview = vi.fn();
+    const toggle = vi.fn(),
+      context = vi.fn();
     const host = document.createElement("div");
     const gallery: HitomiGalleryDetails = {
       id: 42,
@@ -63,6 +65,8 @@ for (const component of [Grid, Row]) {
           gallery,
           ...(component === Row ? { thumbnailZoom: zoom.value } : {}),
           onSelectGallery: select,
+          onToggleSelect: toggle,
+          onContextGallery: context,
           onPreviewGallery: preview,
         }),
     });
@@ -74,6 +78,24 @@ for (const component of [Grid, Row]) {
     title.click();
     expect(preview).toHaveBeenCalledTimes(1);
     expect(select).not.toHaveBeenCalled();
+    const checkbox =
+      host.querySelector<HTMLButtonElement>('[role="checkbox"]')!;
+    checkbox.click();
+    expect(toggle).toHaveBeenCalledWith(gallery, expect.any(MouseEvent));
+    expect(select).not.toHaveBeenCalled();
+    title.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, ctrlKey: true }),
+    );
+    expect(select).toHaveBeenCalledWith(
+      gallery,
+      expect.objectContaining({ ctrlKey: true }),
+    );
+    expect(preview).toHaveBeenCalledTimes(1);
+    select.mockClear();
+    host
+      .querySelector("[data-gallery-id]")!
+      .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
+    expect(context).toHaveBeenCalledWith(gallery);
     const download = Array.from(
       host.querySelectorAll<HTMLButtonElement>("button"),
     ).find((button) => button.textContent?.trim() === "다운로드")!;
