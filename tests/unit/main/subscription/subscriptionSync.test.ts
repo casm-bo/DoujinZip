@@ -165,9 +165,12 @@ describe("subscription synchronization", () => {
     expect(
       isSyncedSubscription({ ...value, query: "title words", enabled: false }),
     ).toBe(true);
+    expect(
+      isSyncedSubscription({ ...value, query: "artist:example words" }),
+    ).toBe(true);
     for (const query of [
       "title words",
-      "artist:example words",
+      "type:manga words",
       "-tag:example",
       "bad:example",
     ])
