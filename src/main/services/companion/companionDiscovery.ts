@@ -56,38 +56,49 @@ export async function getDiscoveryAddresses(): Promise<string[]> {
   }
 }
 export class CompanionDiscovery {
-  private bonjour?: Bonjour;
+  private bonjours: Bonjour[] = [];
   private generation = 0;
   async start(id: string, name: string, port: number) {
     this.stop();
     const generation = this.generation;
     const addresses = await getDiscoveryAddresses();
     if (generation !== this.generation) return;
-    try {
-      this.bonjour = new Bonjour({}, (error: Error) =>
-        console.warn("Companion discovery unavailable", error.message),
-      );
-      const service = this.bonjour.publish({
-        name: `DoujinZip ${name} ${id.slice(0, 8)}`,
-        type: "doujinzip",
-        protocol: "tcp",
-        port,
-        disableIPv6: true,
-        txt: { id, name, addresses: JSON.stringify(addresses.slice(0, 8)) },
-      });
-      service.on("error", (error: Error) =>
-        console.warn("Companion discovery unavailable", error),
-      );
-    } catch (error) {
-      this.stop();
-      console.warn("Companion discovery unavailable", error);
+    for (const [index, address] of (addresses.length
+      ? addresses
+      : [undefined]
+    ).entries()) {
+      try {
+        // Windows may route default multicast through a virtual adapter.
+        const bonjour = new Bonjour(
+          // bonjour-service forwards these options to multicast-dns but mistypes them as ServiceConfig.
+          (address
+            ? { interface: address, bind: "0.0.0.0" }
+            : {}) as ConstructorParameters<typeof Bonjour>[0],
+          (error: Error) =>
+            console.warn("Companion discovery unavailable", error.message),
+        );
+        this.bonjours.push(bonjour);
+        const service = bonjour.publish({
+          name: `DoujinZip ${name} ${id.slice(0, 8)} ${index}`,
+          type: "doujinzip",
+          protocol: "tcp",
+          port,
+          disableIPv6: true,
+          txt: { id, name, addresses: JSON.stringify(addresses.slice(0, 8)) },
+        });
+        service.on("error", (error: Error) =>
+          console.warn("Companion discovery unavailable", error),
+        );
+      } catch (error) {
+        console.warn("Companion discovery unavailable", error);
+      }
     }
   }
   stop() {
     this.generation++;
-    const bonjour = this.bonjour;
-    this.bonjour = undefined;
-    if (!bonjour) return;
-    bonjour.unpublishAll(() => bonjour.destroy());
+    const bonjours = this.bonjours;
+    this.bonjours = [];
+    for (const bonjour of bonjours)
+      bonjour.unpublishAll(() => bonjour.destroy());
   }
 }
