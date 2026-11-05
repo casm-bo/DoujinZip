@@ -827,53 +827,70 @@ const excludeBookIds = computed(() => books.value.map((book) => book.id));
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
-                    <ContextMenuItem @select="toggleEpisodeRead(book)">{{
-                      book.is_read ? "읽지 않음으로 표시" : "읽음으로 표시"
-                    }}</ContextMenuItem>
+                    <ContextMenuItem @select="toggleEpisodeRead(book)">
+                      <Icon
+                        icon="solar:check-circle-bold-duotone"
+                        class="h-4 w-4"
+                      />
+                      {{
+                        book.is_read ? "읽지 않음으로 표시" : "읽음으로 표시"
+                      }}
+                    </ContextMenuItem>
                     <ContextMenuItem
                       @select="
                         runBookAction(() =>
                           api.toggleBookFavorite(book.id, !!book.is_favorite),
                         )
                       "
-                      >{{
-                        book.is_favorite ? "즐겨찾기 해제" : "즐겨찾기 추가"
-                      }}</ContextMenuItem
                     >
+                      <Icon
+                        :icon="
+                          book.is_favorite
+                            ? 'solar:heart-broken-line-duotone'
+                            : 'solar:heart-bold-duotone'
+                        "
+                        class="h-4 w-4"
+                      />
+                      {{ book.is_favorite ? "즐겨찾기 해제" : "즐겨찾기 추가" }}
+                    </ContextMenuItem>
                     <ContextMenuItem
                       :disabled="!!book.is_offline"
                       @select="
                         runBookAction(() => api.openBookFolder(book.path))
                       "
-                      >파일 위치 열기</ContextMenuItem
                     >
+                      <Icon
+                        icon="solar:folder-open-bold-duotone"
+                        class="h-4 w-4"
+                      />
+                      파일 위치 열기
+                    </ContextMenuItem>
                     <ContextMenuItem
                       :disabled="!!book.is_offline"
                       @select="api.openNewWindow(`/viewer/${book.id}`)"
-                      >새 창에서 열기</ContextMenuItem
                     >
-                    <ContextMenuItem
-                      :disabled="!!book.is_offline"
-                      @select="
-                        runBookAction(() =>
-                          api.openBookWithExternalViewer(book.id),
-                        )
-                      "
-                      >외부 프로그램으로 열기</ContextMenuItem
-                    >
+                      <Icon
+                        icon="solar:square-top-down-bold-duotone"
+                        class="h-4 w-4"
+                      />
+                      새 창에서 열기
+                    </ContextMenuItem>
                     <ContextMenuItem
                       :disabled="!!book.is_offline"
                       @select="
                         runBookAction(() => api.rescanBookMetadata(book.id))
                       "
-                      >메타데이터 재스캔</ContextMenuItem
                     >
-                    <ContextMenuItem @select="handleBookClick(book)"
-                      >작품 상세</ContextMenuItem
-                    >
-                    <ContextMenuItem @select="handleRemoveBook(book.id)"
-                      >시리즈에서 제거</ContextMenuItem
-                    >
+                      <Icon icon="solar:refresh-bold-duotone" class="h-4 w-4" />
+                      메타데이터 재스캔
+                    </ContextMenuItem>
+                    <ContextMenuItem @select="handleRemoveBook(book.id)">
+                      <Icon
+                        icon="solar:minus-circle-bold-duotone"
+                        class="h-4 w-4"
+                      />
+                      시리즈에서 제외
+                    </ContextMenuItem>
                   </ContextMenuContent>
                 </ContextMenu>
 
