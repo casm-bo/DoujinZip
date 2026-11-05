@@ -73,6 +73,8 @@ export interface CompanionSyncMutation {
   mutationId: string;
   bookSyncId: string;
   baseVersion?: number;
+  baseCurrentPage?: number;
+  baseIsRead?: boolean;
   modifiedAt?: number;
   currentPage?: number;
   isFavorite?: boolean;

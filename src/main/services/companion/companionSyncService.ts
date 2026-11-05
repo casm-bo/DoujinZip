@@ -266,7 +266,18 @@ export class DesktopCompanionSyncService {
     const versionConflict =
       mutation.baseVersion !== undefined &&
       mutation.baseVersion !== Number(book.state_version || 0);
-    if (versionConflict) {
+    const compatibleProgress =
+      mutation.baseVersion !== undefined &&
+      mutation.baseVersion < Number(book.state_version || 0) &&
+      mutation.currentPage !== undefined &&
+      mutation.baseCurrentPage === Number(book.current_page || 0) &&
+      mutation.isFavorite === undefined &&
+      mutation.isHidden === undefined &&
+      mutation.customTitle === undefined &&
+      mutation.seriesFavorite === undefined &&
+      (mutation.isRead === undefined ||
+        mutation.baseIsRead === Boolean(book.is_read));
+    if (versionConflict && !compatibleProgress) {
       return {
         mutationId: mutation.mutationId,
         status: "conflict",

@@ -1387,6 +1387,16 @@ function isSyncMutation(value: unknown): value is CompanionSyncMutation {
     return false;
   }
   if (
+    mutation.baseCurrentPage !== undefined &&
+    !isNonNegativeInteger(mutation.baseCurrentPage)
+  )
+    return false;
+  if (
+    mutation.baseIsRead !== undefined &&
+    typeof mutation.baseIsRead !== "boolean"
+  )
+    return false;
+  if (
     mutation.modifiedAt !== undefined &&
     !isNonNegativeInteger(mutation.modifiedAt)
   ) {

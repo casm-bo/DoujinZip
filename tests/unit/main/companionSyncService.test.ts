@@ -236,4 +236,50 @@ describe("DesktopCompanionSyncService", () => {
     });
     expect(bootstrap.books[0]).toMatchObject(result.results[0].state!);
   });
+  it("accepts a buffered position only while the PC position is unchanged", async () => {
+    const book = await seedBook(db, { current_page: 3, page_count: 20 });
+    const stored = await db("Book").where("id", book.id).first();
+    await service.applyMutations("desktop", [
+      {
+        mutationId: "pc-favorite",
+        bookSyncId: stored.sync_id,
+        baseVersion: 0,
+        isFavorite: true,
+      },
+    ]);
+    const accepted = await service.applyMutations("phone", [
+      {
+        mutationId: "buffered-position",
+        bookSyncId: stored.sync_id,
+        baseVersion: 0,
+        baseCurrentPage: 3,
+        currentPage: 5,
+      },
+    ]);
+    expect(accepted.results[0].status).toBe("applied");
+    const rejected = await service.applyMutations("phone", [
+      {
+        mutationId: "stale-position",
+        bookSyncId: stored.sync_id,
+        baseVersion: 0,
+        baseCurrentPage: 3,
+        currentPage: 7,
+      },
+    ]);
+    expect(rejected.results[0].status).toBe("conflict");
+    const mixed = await service.applyMutations("phone", [
+      {
+        mutationId: "mixed-edit",
+        bookSyncId: stored.sync_id,
+        baseVersion: 0,
+        baseCurrentPage: 5,
+        currentPage: 8,
+        isFavorite: false,
+      },
+    ]);
+    expect(mixed.results[0].status).toBe("conflict");
+    expect((await db("Book").where("id", book.id).first()).current_page).toBe(
+      5,
+    );
+  });
 });
