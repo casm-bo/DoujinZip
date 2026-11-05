@@ -11,6 +11,10 @@ vi.mock("../../../src/main/handlers/bookHandler.ts", () => ({
 }));
 
 import { createTestDb, seedBook } from "../../../src/main/db/test-utils.js";
+import {
+  inspectContent,
+  saveContent,
+} from "../../../src/main/services/libraryContent.js";
 import { DesktopLibraryService } from "../../../src/main/services/companion/companionLibraryService.js";
 import { DesktopCompanionSyncService } from "../../../src/main/services/companion/companionSyncService.js";
 
@@ -23,6 +27,45 @@ describe("Android reinstall recovery", () => {
 
   afterAll(async () => {
     await db.destroy();
+  });
+
+  it("requires reinspection after restore and issues a fresh cache token without resetting user data", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "restore-content-"));
+    try {
+      await fs.writeFile(path.join(root, "1.jpg"), "image");
+      const book = await seedBook(db, {
+        path: root,
+        is_favorite: true,
+        current_page: 1,
+      });
+      const manifest = await inspectContent(root);
+      await db.transaction((trx) => saveContent(trx, book.id, manifest));
+      const old = await db("Book").where("id", book.id).first();
+      await db("Book")
+        .where("id", book.id)
+        .update({
+          content_token: null,
+          content_manifest: JSON.stringify({ source: "pending", pages: [] }),
+        });
+      const library = new DesktopLibraryService(db);
+      await expect(library.listBooks()).rejects.toThrow(
+        "verify restored content",
+      );
+      expect(await library.getPageCount(book.id)).toBeNull();
+      await db.transaction((trx) => saveContent(trx, book.id, manifest));
+      const restored = await db("Book").where("id", book.id).first();
+      expect(restored.content_token).not.toBe(old.content_token);
+      expect(restored.content_revision).toBe(old.content_revision + 1);
+      expect(restored.is_favorite).toBe(1);
+      expect(restored.current_page).toBe(1);
+      expect(
+        (await library.listBooks()).find((item) => item.id === book.id)
+          ?.contentVersion,
+      ).toBe(restored.content_token);
+    } finally {
+      await db("Book").where("path", root).del();
+      await fs.rm(root, { recursive: true, force: true });
+    }
   });
 
   it("assigns a persistent identity per library database", async () => {

@@ -6,6 +6,7 @@ import archiver from "archiver";
 import type { Knex } from "knex";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createTestDb, seedBook } from "../../../src/main/db/test-utils.js";
+import { up as verifyExistingContent } from "../../../src/main/db/migrations/20261105000002_verify_existing_content.js";
 import {
   inspectContent,
   saveContent,
@@ -118,4 +119,21 @@ it("does not modify stored content on inaccessible source errors", async () => {
     inspectContent(path.join(directory, "missing")),
   ).rejects.toThrow();
   expect(await db("Book").where("id", book.id).first()).toEqual(original);
+});
+
+it("marks legacy backup rows for verification without changing user data", async () => {
+  const book = await seedBook(db, {
+    path: directory,
+    is_favorite: true,
+    current_page: 3,
+  });
+  await verifyExistingContent(db);
+  const migrated = await db("Book").where("id", book.id).first();
+  expect(JSON.parse(migrated.content_manifest)).toEqual({
+    source: "pending",
+    pages: [],
+  });
+  expect(migrated.content_revision).toBe(0);
+  expect(migrated.is_favorite).toBe(1);
+  expect(migrated.current_page).toBe(3);
 });

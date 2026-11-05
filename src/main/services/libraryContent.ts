@@ -89,6 +89,7 @@ export async function saveContent(
     JSON.stringify(previous?.pages) !== JSON.stringify(manifest.pages);
   const firstChanged =
     !previous ||
+    previous.source === "pending" ||
     JSON.stringify(previous.pages[0]) !== JSON.stringify(manifest.pages[0]);
   const serialized = JSON.stringify(manifest);
   if (changed || serialized !== book.content_manifest) {

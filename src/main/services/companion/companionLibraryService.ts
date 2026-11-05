@@ -41,6 +41,7 @@ interface LibraryBookRow {
   added_at: string | null;
   file_mtime: number | null;
   content_token: string | null;
+  content_manifest: string | null;
   content_revision: number;
   current_page: number | null;
   is_favorite: number | boolean;
@@ -393,6 +394,15 @@ export class DesktopLibraryService implements CompanionLibraryService {
         if (paginated) query.limit(limit + 1);
       })) as LibraryBookRow[];
 
+    if (
+      books.some(
+        (book) =>
+          book.content_manifest &&
+          JSON.parse(book.content_manifest).source === "pending",
+      )
+    ) {
+      throw new Error("Refresh the desktop library to verify restored content");
+    }
     const hasMore = books.length > limit;
     const page = hasMore ? books.slice(0, limit) : books;
     const mapped = page
@@ -449,9 +459,14 @@ export class DesktopLibraryService implements CompanionLibraryService {
 
   async getPageCount(bookId: number): Promise<number | null> {
     const book = await this.database("Book")
-      .select("page_count")
+      .select("page_count", "content_manifest")
       .where("id", bookId)
       .first();
+    if (
+      book?.content_manifest &&
+      JSON.parse(book.content_manifest).source === "pending"
+    )
+      return null;
     return book ? Math.max(0, book.page_count || 0) : null;
   }
 
@@ -490,6 +505,11 @@ export class DesktopLibraryService implements CompanionLibraryService {
       .where("id", bookId)
       .first();
     if (!book?.path) return null;
+    if (
+      book.content_manifest &&
+      JSON.parse(book.content_manifest).source === "pending"
+    )
+      return null;
 
     const stat = await fs.stat(book.path).catch(() => null);
     if (!stat) return null;

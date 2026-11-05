@@ -198,7 +198,6 @@ const validateBackupDatabase = async (databasePath: string) => {
     client: "better-sqlite3",
     connection: {
       filename: databasePath,
-      options: { readonly: true },
     },
     useNullAsDefault: true,
   });
@@ -214,6 +213,18 @@ const validateBackupDatabase = async (databasePath: string) => {
       .whereIn("name", ["Book", "knex_migrations"]);
     if (tables.length !== 2) {
       throw new Error("Backup database does not contain the required schema.");
+    }
+    // Only the staged copy is modified; restored versions must not reuse old image caches.
+    const columns = await backup.raw("PRAGMA table_info(Book)");
+    if (
+      columns.some(
+        (column: { name: string }) => column.name === "content_token",
+      )
+    ) {
+      await backup.raw(
+        'UPDATE "Book" SET "content_token" = NULL, "content_manifest" = ?',
+        [JSON.stringify({ source: "pending", pages: [] })],
+      );
     }
   } finally {
     await backup.destroy();

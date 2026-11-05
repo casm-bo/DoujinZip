@@ -468,6 +468,31 @@ describe("configHandler", () => {
       vi.useRealTimers();
     });
 
+    it("invalidates restored content tokens before replacing the live database", async () => {
+      vi.useFakeTimers();
+      vi.mocked(dialog.showOpenDialog).mockResolvedValue({
+        canceled: false,
+        filePaths: ["/backup"],
+      });
+      vi.mocked(existsSync).mockReturnValue(true);
+      mockBackupRaw
+        .mockResolvedValueOnce([{ quick_check: "ok" }])
+        .mockResolvedValueOnce([{ name: "content_token" }]);
+      expect(
+        (
+          await handleRestoreDatabase({
+            sender: {},
+          } as Electron.IpcMainInvokeEvent)
+        ).success,
+      ).toBe(true);
+      expect(mockBackupRaw).toHaveBeenCalledWith(
+        'UPDATE "Book" SET "content_token" = NULL, "content_manifest" = ?',
+        [JSON.stringify({ source: "pending", pages: [] })],
+      );
+      vi.runAllTimers();
+      vi.useRealTimers();
+    });
+
     it("keeps older backups without a cover folder compatible", async () => {
       vi.useFakeTimers();
       vi.mocked(dialog.showOpenDialog).mockResolvedValue({
