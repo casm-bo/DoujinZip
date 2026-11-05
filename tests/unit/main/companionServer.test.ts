@@ -839,12 +839,50 @@ describe("CompanionServer", () => {
     expect(libraryService.resetPresentationCover).toHaveBeenCalledTimes(1);
   });
 
-  async function pairTestDevice(): Promise<string> {
+  it("reuses device identity on re-pairing and rotates credentials", async () => {
+    const firstToken = await pairTestDevice("a".repeat(64));
+    const original = { ...devices[0] };
+    const secondToken = await pairTestDevice("a".repeat(64));
+    expect(devices).toHaveLength(1);
+    expect(devices[0]).toMatchObject({
+      id: original.id,
+      pairedAt: original.pairedAt,
+    });
+    expect(secondToken).not.toBe(firstToken);
+    expect(
+      (
+        await fetch(`${baseUrl}/v1/library/books`, {
+          headers: { Authorization: `Bearer ${firstToken}` },
+        })
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await fetch(`${baseUrl}/v1/library/books`, {
+          headers: { Authorization: `Bearer ${secondToken}` },
+        })
+      ).status,
+    ).toBe(200);
+    await pairTestDevice("b".repeat(64));
+    expect(devices).toHaveLength(2);
+  });
+
+  it("does not merge legacy devices solely by name", async () => {
+    await pairTestDevice();
+    await pairTestDevice("a".repeat(64));
+    expect(devices).toHaveLength(2);
+  });
+
+  async function pairTestDevice(clientId?: string): Promise<string> {
     const pairing = server.createPairingCode();
     const response = await fetch(`${baseUrl}/v1/pair`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: pairing.code, deviceName: "Phone" }),
+      body: JSON.stringify({
+        code: pairing.code,
+        deviceName: "Phone",
+        clientId,
+      }),
     });
     const body = (await response.json()) as { data: { token: string } };
     return body.data.token;

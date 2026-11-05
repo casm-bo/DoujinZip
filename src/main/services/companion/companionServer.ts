@@ -1095,7 +1095,10 @@ export class CompanionServer {
       body.code !== this.pairingState.code ||
       typeof body.deviceName !== "string" ||
       body.deviceName.trim().length === 0 ||
-      body.deviceName.length > 100
+      body.deviceName.length > 100 ||
+      (body.clientId !== undefined &&
+        (typeof body.clientId !== "string" ||
+          !/^[a-f0-9]{64}$/.test(body.clientId)))
     ) {
       this.recordFailedPairingAttempt(remoteAddress);
       this.sendJson(response, 401, {
@@ -1110,14 +1113,23 @@ export class CompanionServer {
     const libraryId = await this.getLibraryId?.();
     const token = randomBytes(32).toString("base64url");
     const now = new Date().toISOString();
+    const devices = this.deviceStore.getDevices();
+    const existing = body.clientId
+      ? devices.find((device) => device.clientId === body.clientId)
+      : undefined;
     const device: CompanionDevice = {
-      id: randomUUID(),
+      id: existing?.id ?? randomUUID(),
+      ...(body.clientId ? { clientId: body.clientId } : {}),
       name: body.deviceName.trim(),
       tokenHash: hashToken(token),
-      pairedAt: now,
+      pairedAt: existing?.pairedAt ?? now,
       lastSeenAt: now,
     };
-    this.deviceStore.setDevices([...this.deviceStore.getDevices(), device]);
+    this.deviceStore.setDevices(
+      existing
+        ? devices.map((item) => (item.id === existing.id ? device : item))
+        : [...devices, device],
+    );
     this.markDeviceActivity(device.id);
 
     this.sendJson(response, 201, {

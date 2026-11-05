@@ -1,5 +1,6 @@
 export interface CompanionDevice {
   id: string;
+  clientId?: string;
   name: string;
   tokenHash: string;
   pairedAt: string;
