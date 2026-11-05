@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   languageLabel,
+  sortSubscriptions,
   splitLanguage,
   withLanguage,
 } from "../../../src/renderer/lib/subscriptionQuery";
@@ -93,5 +94,28 @@ describe("languageLabel", () => {
 
   it("목록에 없는 값은 그대로 둔다", () => {
     expect(languageLabel("spanish")).toBe("spanish");
+  });
+});
+
+describe("subscription sorting", () => {
+  const items = [
+    { id: 1, query: "artist:z", label: "나", enabled: false },
+    { id: 3, query: "artist:a", label: "가", enabled: true },
+    { id: 2, query: "artist:b", enabled: true },
+  ];
+  it("sorts without changing source order", () => {
+    expect(sortSubscriptions(items, "newest").map((item) => item.id)).toEqual([
+      3, 2, 1,
+    ]);
+    expect(sortSubscriptions(items, "oldest").map((item) => item.id)).toEqual([
+      1, 2, 3,
+    ]);
+    expect(sortSubscriptions(items, "enabled").map((item) => item.id)).toEqual([
+      3, 2, 1,
+    ]);
+    expect(sortSubscriptions(items, "name").map((item) => item.id)).toEqual([
+      3, 1, 2,
+    ]);
+    expect(items.map((item) => item.id)).toEqual([1, 3, 2]);
   });
 });

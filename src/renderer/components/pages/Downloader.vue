@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   getPresentation,
-  addSubscription,
   enterSubscriptionTab,
   ipcRenderer,
   refreshSubscriptions,
@@ -15,7 +14,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { withLanguage } from "@/lib/subscriptionQuery";
 import { useHitomiLanguages } from "@/composable/useHitomiLanguages";
 import { Label } from "@/components/ui/label";
 import {
@@ -168,22 +166,8 @@ const conditionPanel = ref<"language" | "tags" | null>(null);
 const subscriptionToolbar = ref<InstanceType<
   typeof SubscriptionToolbar
 > | null>(null);
-const isSubscribing = ref(false);
-const subscribeCurrentSearch = async () => {
-  if (isSubscribing.value || !searchQuery.value.trim()) return;
-  isSubscribing.value = true;
-  try {
-    await addSubscription({
-      query: withLanguage(downloaderLanguage.value, searchQuery.value),
-    });
-    await handleSubscriptionsChanged();
-    toast.success("현재 검색을 구독했습니다.");
-  } catch (error) {
-    toast.error(error instanceof Error ? error.message : "구독 추가 실패");
-  } finally {
-    isSubscribing.value = false;
-  }
-};
+const subscribeCurrentSearch = () =>
+  subscriptionToolbar.value?.openSubscribe(searchQuery.value);
 const sourceKey = computed(() =>
   activeSource.value === "subscription"
     ? subscriptionKey.value
@@ -554,7 +538,7 @@ useSearchPersistence(searchQuery, "downloader-search-query");
             <DropdownMenuContent align="end" class="w-64 rounded-xl">
               <DropdownMenuItem
                 class="gap-3 px-3 py-2.5"
-                :disabled="!searchQuery.trim() || isSubscribing"
+                :disabled="!searchQuery.trim()"
                 @select="subscribeCurrentSearch"
                 ><BellPlus class="text-primary mr-1 size-5" />현재 검색
                 구독</DropdownMenuItem

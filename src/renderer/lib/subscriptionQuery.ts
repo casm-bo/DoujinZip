@@ -11,6 +11,27 @@ export interface LanguageOption {
   label: string;
 }
 
+export type SubscriptionSort = "newest" | "oldest" | "name" | "enabled";
+export function sortSubscriptions<
+  T extends {
+    id: number;
+    query: string;
+    label?: string | null;
+    enabled: boolean;
+  },
+>(items: T[], sort: SubscriptionSort): T[] {
+  return [...items].sort((a, b) => {
+    if (sort === "name")
+      return (
+        (a.label || a.query).localeCompare(b.label || b.query, "ko") ||
+        b.id - a.id
+      );
+    if (sort === "enabled")
+      return Number(b.enabled) - Number(a.enabled) || b.id - a.id;
+    return sort === "oldest" ? a.id - b.id : b.id - a.id;
+  });
+}
+
 /** 다운로더 필터와 구독 추가가 같이 쓰는 언어 목록. "all"은 언어를 안 붙인다 */
 export const LANGUAGE_OPTIONS: LanguageOption[] = [
   { value: "all", label: "전체 언어" },

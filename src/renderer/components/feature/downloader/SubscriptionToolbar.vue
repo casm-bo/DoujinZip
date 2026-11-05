@@ -5,14 +5,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useHitomiLanguages } from "@/composable/useHitomiLanguages";
+import SubscriptionLanguages from "./SubscriptionLanguages.vue";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { nextTick } from "vue";
 import { Switch } from "@/components/ui/switch";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import {
   languageLabel,
+  sortSubscriptions,
+  type SubscriptionSort,
   splitLanguage,
   withLanguage,
 } from "@/lib/subscriptionQuery";
@@ -38,6 +52,9 @@ const emit = defineEmits<{
 }>();
 
 const isOpen = ref(false);
+const { languageOptions: LANGUAGE_OPTIONS, load: loadLanguages } =
+  useHitomiLanguages();
+onMounted(loadLanguages);
 const subscriptionStore = useSubscriptionStore();
 const isLoading = ref(false);
 const isAdding = ref(false);
@@ -54,12 +71,16 @@ const isBusy = computed(() => pendingId.value !== null);
 const subscriptions = ref<Subscription[]>([]);
 const errors = ref<Record<number, string>>({});
 const newQuery = ref("");
+const newLabel = ref("");
+const isCreateOpen = ref(false);
+const newLanguage = ref("all");
+const sort = ref<SubscriptionSort>("newest");
 
 /** 고치는 중인 구독 id */
 const editingId = ref<number | null>(null);
 const editingQuery = ref("");
 const editingLabel = ref("");
-const editingLanguages = ref("");
+const editingLanguages = ref<string[]>([]);
 const isSaving = ref(false);
 
 const lastCheckedText = computed(() => {
@@ -72,15 +93,8 @@ const lastCheckedText = computed(() => {
   });
 });
 
-/** 지금 입력한 내용이 실제로 어떤 검색어로 등록되는지 */
 const composedQuery = computed(() =>
-  withLanguage(props.language, newQuery.value),
-);
-
-const languageHint = computed(() =>
-  props.language === "all"
-    ? "언어를 가리지 않고 구독됩니다."
-    : `${languageLabel(props.language)}로 구독됩니다.`,
+  withLanguage(newLanguage.value, newQuery.value),
 );
 
 const canAdd = computed(
@@ -89,7 +103,7 @@ const canAdd = computed(
 
 /** 모든 줄이 `language:korean`으로 시작하지 않도록 언어를 떼어 따로 보여준다 */
 const rows = computed(() =>
-  subscriptions.value.map((subscription) => {
+  sortSubscriptions(subscriptions.value, sort.value).map((subscription) => {
     const { language, rest } = splitLanguage(subscription.query);
     return {
       subscription,
@@ -137,7 +151,11 @@ const handleAdd = async () => {
   // 메인이 구독 전체를 한 바퀴 돌며 기준선을 잡고 오기 때문에 몇 초 걸린다
   isAdding.value = true;
   try {
-    await api.addSubscription({ query: composedQuery.value });
+    await api.addSubscription({
+      query: composedQuery.value,
+      label: newLabel.value,
+    });
+    isCreateOpen.value = false;
     newQuery.value = "";
     toast.success("구독에 추가했습니다.");
     await load();
@@ -184,9 +202,14 @@ const handleToggle = async (subscription: Subscription, enabled: boolean) => {
 // 언어 접두사도 고칠 수 있도록 queryText가 아닌 원문을 연다
 const startEditing = (subscription: Subscription) => {
   editingId.value = subscription.id;
-  editingQuery.value = subscription.query;
+  const { language, rest } = splitLanguage(subscription.query);
+  editingQuery.value = rest || subscription.query;
   editingLabel.value = subscription.label ?? "";
-  editingLanguages.value = subscription.languages?.join(", ") ?? "";
+  editingLanguages.value = subscription.languages?.length
+    ? [...subscription.languages]
+    : language
+      ? [language]
+      : [];
 };
 
 const cancelEditing = () => {
@@ -220,11 +243,7 @@ const commitEditing = async () => {
     label?: string;
     languages?: string[];
   } = { id };
-  if (editingLanguages.value !== (target?.languages?.join(", ") ?? ""))
-    params.languages = editingLanguages.value
-      .split(",")
-      .map((l) => l.trim())
-      .filter(Boolean);
+  params.languages = [...editingLanguages.value];
   if (query !== target?.query) params.query = query;
   if (editingLabel.value !== (target?.label ?? "")) {
     params.label = editingLabel.value;
@@ -277,238 +296,44 @@ const handleRefresh = async () => {
 
 onMounted(load);
 watch(() => subscriptionStore.revision, load);
-defineExpose({
-  openManager: () => {
-    isOpen.value = true;
-  },
-});
+const openManager = async () => {
+  await nextTick();
+  isOpen.value = true;
+  void load();
+};
+const openSubscribe = async (query = "") => {
+  const parsed = splitLanguage(query);
+  newQuery.value = parsed.rest || query;
+  newLanguage.value = parsed.language || props.language;
+  newLabel.value = "";
+  await nextTick();
+  isCreateOpen.value = true;
+};
+defineExpose({ openManager, openSubscribe });
 </script>
 
 <template>
   <div class="flex min-w-0 flex-wrap items-center gap-2">
-    <Popover v-model:open="isOpen">
-      <PopoverTrigger as-child>
-        <Button variant="outline" @click="load">
-          <Icon icon="solar:feed-bold-duotone" class="h-4 w-4" />
-          구독 관리
-          <span class="text-muted-foreground ml-1 text-xs">
-            {{ subscriptions.length }}
-          </span>
-        </Button>
-      </PopoverTrigger>
-
-      <!-- PopoverContent 자체가 flex-col + gap이라 여기서 간격을 또 주지 않습니다 -->
-      <PopoverContent class="w-[26rem]" align="start">
-        <div>
-          <p class="text-sm font-semibold">구독 관리</p>
-          <p class="text-muted-foreground text-xs">
-            등록한 검색어의 신작을 앱이 켜져 있는 동안 1시간마다 확인합니다.
-          </p>
-        </div>
-
-        <div class="flex gap-2">
-          <SmartSearchInput
-            v-model="newQuery"
-            class="flex-1"
-            placeholder="예: artist:작가명 female:sole_female"
-            :show-actions="false"
-            @submit="handleEnter"
-          />
-          <Button
-            size="sm"
-            variant="secondary"
-            class="h-8 shrink-0"
-            :disabled="!canAdd"
-            @click="handleAdd"
-          >
-            <Icon
-              v-if="isAdding"
-              icon="svg-spinners:ring-resize"
-              class="h-3.5 w-3.5"
-            />
-            {{ isAdding ? "확인 중" : "추가" }}
-          </Button>
-        </div>
-
-        <!-- 툴바 필터는 팝오버에 가려 안 보이므로 무엇이 붙는지 알려줍니다 -->
-        <p class="text-muted-foreground text-xs">
-          {{ languageHint }} 툴바의 <em>필터 → 언어</em>에서 바꿀 수 있습니다.
-          <template v-if="blacklistCount > 0">
-            차단 태그 {{ blacklistCount }}개도 함께 빠집니다.
-          </template>
-        </p>
-
-        <div
-          v-if="rows.length === 0 && !isLoading"
-          class="flex flex-col items-center gap-1.5 py-6"
-        >
-          <Icon
-            icon="solar:feed-bold-duotone"
-            class="text-muted-foreground h-8 w-8"
-          />
-          <p class="text-muted-foreground text-sm">구독한 검색어가 없습니다.</p>
-        </div>
-
-        <ul v-else class="-mx-1 max-h-80 space-y-1.5 overflow-y-auto px-1">
-          <li
-            v-for="row in rows"
-            :key="row.subscription.id"
-            class="bg-card hover:bg-accent/50 flex items-center gap-2.5 rounded-lg border px-2.5 py-2"
-          >
-            <!-- 입력칸이 둘이라 blur로 저장하면 칸만 옮겨도 저장됩니다 -->
-            <template v-if="editingId === row.subscription.id">
-              <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-                <SmartSearchInput
-                  v-model="editingQuery"
-                  placeholder="검색어 (예: artist:작가명)"
-                  :show-actions="false"
-                  @keyup.enter="handleEditEnter"
-                  @keyup.esc="cancelEditing"
-                />
-                <Input
-                  v-model="editingLabel"
-                  placeholder="표시할 이름 (비우면 검색어)"
-                  @keyup.enter="commitEditing"
-                  @keyup.esc="cancelEditing"
-                />
-                <Input
-                  v-model="editingLanguages"
-                  placeholder="언어 코드: korean, japanese (비우면 검색어 기준)"
-                  aria-label="구독 언어"
-                />
-              </div>
-
-              <div class="flex shrink-0 items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  :disabled="isSaving"
-                  title="취소"
-                  @click="cancelEditing"
-                >
-                  <Icon
-                    icon="solar:close-circle-bold-duotone"
-                    class="h-4 w-4"
-                  />
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="icon-sm"
-                  :disabled="isSaving"
-                  title="저장"
-                  @click="commitEditing"
-                >
-                  <Icon
-                    :icon="
-                      isSaving
-                        ? 'svg-spinners:ring-resize'
-                        : 'solar:check-circle-bold-duotone'
-                    "
-                    class="h-4 w-4"
-                  />
-                </Button>
-              </div>
-            </template>
-
-            <template v-else>
-              <Switch
-                :model-value="row.subscription.enabled"
-                :disabled="isBusy"
-                :title="row.subscription.enabled ? '확인 중' : '멈춤'"
-                @update:model-value="handleToggle(row.subscription, $event)"
-              />
-
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-1.5">
-                  <p
-                    class="min-w-0 truncate text-sm"
-                    :class="
-                      row.subscription.enabled
-                        ? ''
-                        : 'text-muted-foreground line-through'
-                    "
-                    :title="row.subscription.query"
-                  >
-                    {{ row.subscription.label || row.queryText }}
-                  </p>
-                  <Badge v-if="row.language" variant="secondary">
-                    {{ row.language }}
-                  </Badge>
-                </div>
-
-                <p
-                  v-if="row.error"
-                  class="text-destructive mt-0.5 flex items-center gap-1 text-xs"
-                  :title="row.error"
-                >
-                  <Icon
-                    icon="solar:danger-triangle-bold-duotone"
-                    class="h-3.5 w-3.5 shrink-0"
-                  />
-                  <span class="truncate"
-                    >확인 실패 · 다음 확인에 다시 시도</span
-                  >
-                </p>
-              </div>
-
-              <!-- 켜고 끄기·삭제는 몇 초 걸리므로 그동안 버튼 자리를 스피너로 바꿉니다 -->
-              <div
-                v-if="pendingId === row.subscription.id"
-                class="text-muted-foreground flex h-7 w-[3.625rem] shrink-0 items-center justify-center"
-              >
-                <Icon icon="svg-spinners:ring-resize" class="h-4 w-4" />
-              </div>
-
-              <div v-else class="flex shrink-0 items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  :disabled="isBusy"
-                  title="검색어·이름 수정"
-                  @click="startEditing(row.subscription)"
-                >
-                  <Icon icon="solar:pen-2-bold-duotone" class="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="icon-sm"
-                  :disabled="isBusy"
-                  title="구독 삭제"
-                  @click="handleRemove(row.subscription)"
-                >
-                  <Icon
-                    icon="solar:trash-bin-trash-bold-duotone"
-                    class="h-4 w-4"
-                  />
-                </Button>
-              </div>
-            </template>
-          </li>
-        </ul>
-
-        <p class="text-muted-foreground border-t pt-2 text-xs">
-          마지막 확인: {{ lastCheckedText }}
-        </p>
-      </PopoverContent>
-    </Popover>
-
+    <Button variant="outline" @click="openManager"
+      ><Icon icon="solar:feed-bold-duotone" class="size-4" />구독 관리
+      <span class="text-muted-foreground text-xs">{{
+        subscriptions.length
+      }}</span></Button
+    >
     <Button
       variant="secondary"
       size="icon"
       :disabled="isRefreshing"
       title="지금 확인"
       @click="handleRefresh"
-    >
-      <Icon
+      ><Icon
         icon="solar:refresh-bold-duotone"
-        class="h-5 w-5"
-        :class="isRefreshing ? 'animate-spin' : ''"
-      />
-    </Button>
-
-    <span v-if="newCount > 0" class="text-sm font-medium">
-      신작 {{ newCount }}건
-    </span>
+        class="size-5"
+        :class="{ 'animate-spin': isRefreshing }"
+    /></Button>
+    <span v-if="newCount > 0" class="text-sm font-medium"
+      >신작 {{ newCount }}건</span
+    >
     <Button
       variant="outline"
       class="ml-auto"
@@ -517,5 +342,190 @@ defineExpose({
       @click="markAllRead"
       >모두 읽음</Button
     >
+
+    <Dialog v-model:open="isOpen">
+      <DialogContent
+        class="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl"
+      >
+        <DialogHeader
+          ><DialogTitle>구독 관리</DialogTitle
+          ><DialogDescription
+            >등록한 검색어의 신작을 앱이 켜져 있는 동안 1시간마다
+            확인합니다.</DialogDescription
+          ></DialogHeader
+        >
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <Button @click="openSubscribe()">새 구독 추가</Button>
+          <Select v-model="sort"
+            ><SelectTrigger class="w-40" aria-label="구독 정렬"
+              ><SelectValue /></SelectTrigger
+            ><SelectContent>
+              <SelectItem value="newest">최근 추가순</SelectItem
+              ><SelectItem value="oldest">오래된순</SelectItem
+              ><SelectItem value="name">이름순</SelectItem
+              ><SelectItem value="enabled">활성 구독 먼저</SelectItem>
+            </SelectContent></Select
+          >
+        </div>
+        <p v-if="isLoading" class="text-muted-foreground text-sm" role="status">
+          불러오는 중...
+        </p>
+        <p
+          v-if="rows.length === 0 && !isLoading"
+          class="text-muted-foreground py-10 text-center"
+        >
+          구독한 검색어가 없습니다.
+        </p>
+        <ul v-else class="min-h-0 space-y-3 overflow-y-auto p-1">
+          <li
+            v-for="row in rows"
+            :key="row.subscription.id"
+            class="bg-card space-y-3 rounded-xl border p-4"
+          >
+            <template v-if="editingId === row.subscription.id">
+              <label class="block space-y-2 text-sm font-medium"
+                ><span>표시 이름</span
+                ><Input v-model="editingLabel" placeholder="비우면 검색어 표시"
+              /></label>
+              <div class="space-y-2">
+                <p class="text-sm font-medium">검색 조건</p>
+                <SmartSearchInput
+                  v-model="editingQuery"
+                  placeholder="artist:작가명 tag:태그"
+                  :show-actions="false"
+                  @submit="handleEditEnter"
+                />
+              </div>
+              <SubscriptionLanguages v-model="editingLanguages" />
+              <div class="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  :disabled="isSaving"
+                  @click="cancelEditing"
+                  >취소</Button
+                ><Button
+                  :disabled="isSaving || !editingQuery.trim()"
+                  @click="commitEditing"
+                  >{{ isSaving ? "저장 중..." : "저장" }}</Button
+                >
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex items-start gap-3">
+                <Switch
+                  :model-value="row.subscription.enabled"
+                  :disabled="isBusy || isSaving"
+                  aria-label="구독 활성화"
+                  @update:model-value="handleToggle(row.subscription, $event)"
+                />
+                <div class="min-w-0 flex-1 space-y-1">
+                  <p
+                    class="text-sm font-semibold break-words"
+                    :class="{
+                      'text-muted-foreground': !row.subscription.enabled,
+                    }"
+                  >
+                    {{ row.subscription.label || row.queryText }}
+                  </p>
+                  <p
+                    v-if="row.subscription.label"
+                    class="text-muted-foreground text-xs break-words"
+                  >
+                    {{ row.queryText }}
+                  </p>
+                  <Badge variant="secondary" class="whitespace-normal">{{
+                    row.language || "전체 언어"
+                  }}</Badge>
+                  <p
+                    v-if="row.error"
+                    class="text-destructive text-xs break-words"
+                    :title="row.error"
+                  >
+                    확인 실패 · 다음 확인에 다시 시도
+                  </p>
+                </div>
+                <div class="flex shrink-0 flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="isBusy || isSaving"
+                    @click="startEditing(row.subscription)"
+                    >편집</Button
+                  >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    :disabled="isBusy || isSaving"
+                    @click="handleRemove(row.subscription)"
+                    >{{
+                      pendingId === row.subscription.id ? "처리 중..." : "삭제"
+                    }}</Button
+                  >
+                </div>
+              </div>
+            </template>
+          </li>
+        </ul>
+        <p class="text-muted-foreground border-t pt-3 text-xs">
+          마지막 확인: {{ lastCheckedText
+          }}<span v-if="blacklistCount">
+            · 차단 태그 {{ blacklistCount }}개 적용</span
+          >
+        </p>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog v-model:open="isCreateOpen">
+      <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+        <DialogHeader
+          ><DialogTitle>검색 구독하기</DialogTitle
+          ><DialogDescription
+            >이름과 검색 조건을 확인한 뒤 구독하세요.</DialogDescription
+          ></DialogHeader
+        >
+        <label class="space-y-2 text-sm font-medium"
+          ><span>표시 이름</span
+          ><Input v-model="newLabel" placeholder="비우면 검색어 표시"
+        /></label>
+        <div class="space-y-2">
+          <p class="text-sm font-medium">검색 조건</p>
+          <SmartSearchInput
+            v-model="newQuery"
+            placeholder="artist:작가명 tag:태그"
+            :show-actions="false"
+            @submit="handleEnter"
+          />
+        </div>
+        <label class="space-y-2 text-sm font-medium"
+          ><span>언어</span
+          ><Select v-model="newLanguage"
+            ><SelectTrigger aria-label="새 구독 언어"
+              ><SelectValue /></SelectTrigger
+            ><SelectContent
+              ><SelectItem
+                v-for="item in LANGUAGE_OPTIONS"
+                :key="item.value"
+                :value="item.value"
+                >{{ item.label }}</SelectItem
+              ></SelectContent
+            ></Select
+          ></label
+        >
+        <p class="text-muted-foreground text-xs">
+          태그 조건의 신작을 확인합니다. 차단 태그 {{ blacklistCount }}개도
+          적용됩니다.
+        </p>
+        <div class="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            :disabled="isAdding"
+            @click="isCreateOpen = false"
+            >취소</Button
+          ><Button :disabled="!canAdd" @click="handleAdd">{{
+            isAdding ? "등록 중..." : "구독하기"
+          }}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
