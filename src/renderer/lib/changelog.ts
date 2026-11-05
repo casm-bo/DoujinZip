@@ -15,6 +15,32 @@ export interface Changelog {
  */
 export const changelogData: Changelog[] = [
   {
+    version: "2.8.2",
+    changes: [
+      {
+        type: "feature",
+        title: "기능",
+        items: [
+          "검색 결과에 체크박스·Ctrl/Shift 다중 선택·우클릭 메뉴·선택 다운로드를 추가하고, 구독 관리에 정렬 기능을 추가했습니다.",
+        ],
+      },
+      {
+        type: "fix",
+        title: "버그 수정",
+        items: [
+          "작가명 공백·밑줄을 모두 인식하도록 수정하고, 구독 관리창이 바로 닫히던 문제를 해결했습니다.",
+        ],
+      },
+      {
+        type: "etc",
+        title: "UI 개선",
+        items: [
+          "구독 전 확인창을 추가하고 관리창의 크기·편집·언어 선택·카드 대비를 개선했습니다. Hitomi 언어 목록 자동 갱신과 한국어·일본어·영어·중국어 우선 표시를 적용했습니다. 목록 보기의 기존 150%를 새 100%로 조정하고 태그 잘림을 수정했습니다.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.8.1",
     changes: [
       {
