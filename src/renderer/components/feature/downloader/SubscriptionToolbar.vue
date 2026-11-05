@@ -199,7 +199,7 @@ const handleToggle = async (subscription: Subscription, enabled: boolean) => {
   }
 };
 
-// 언어 접두사도 고칠 수 있도록 queryText가 아닌 원문을 연다
+// 언어는 별도 선택기로 편집한다.
 const startEditing = (subscription: Subscription) => {
   editingId.value = subscription.id;
   const { language, rest } = splitLanguage(subscription.query);
@@ -229,7 +229,21 @@ const commitEditing = async () => {
   const target = subscriptions.value.find(
     (subscription) => subscription.id === id,
   );
-  const query = editingQuery.value.trim();
+  const original = splitLanguage(target?.query ?? "");
+  const originalLanguages = target?.languages?.length
+    ? target.languages
+    : original.language
+      ? [original.language]
+      : [];
+  const languagesChanged =
+    JSON.stringify([...editingLanguages.value].sort()) !==
+    JSON.stringify([...originalLanguages].sort());
+  let query = editingQuery.value.trim();
+  if (languagesChanged) {
+    query = splitLanguage(query).rest;
+    if (!query && editingLanguages.value.length)
+      query = `language:${editingLanguages.value[0]}`;
+  }
 
   if (!query) {
     toast.error("검색어가 비어 있습니다.");
@@ -243,8 +257,10 @@ const commitEditing = async () => {
     label?: string;
     languages?: string[];
   } = { id };
-  params.languages = [...editingLanguages.value];
-  if (query !== target?.query) params.query = query;
+  if (languagesChanged || query !== (original.rest || target?.query)) {
+    params.languages = [...editingLanguages.value];
+    params.query = query;
+  }
   if (editingLabel.value !== (target?.label ?? "")) {
     params.label = editingLabel.value;
   }
