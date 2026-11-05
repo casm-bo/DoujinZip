@@ -813,6 +813,34 @@ describe("handleGetBooks - 통합 테스트", () => {
       ]);
     });
 
+    it("ungrouped series return individual books and individual read filters", async () => {
+      const [seriesId] = await db("SeriesCollection").insert({
+        name: "Ungroup",
+      });
+      const first = await seedBook(db, {
+        path: "/ungroup/1",
+        series_collection_id: seriesId,
+        series_order_index: 0,
+        is_read: true,
+      });
+      const second = await seedBook(db, {
+        path: "/ungroup/2",
+        series_collection_id: seriesId,
+        series_order_index: 1,
+        is_read: false,
+      });
+      expect(await getResultIds({})).toEqual([first.id]);
+      expect((await getResultIds({ groupSeries: false })).sort()).toEqual(
+        [first.id, second.id].sort(),
+      );
+      expect(
+        await getResultIds({ groupSeries: false, readStatus: "read" }),
+      ).toEqual([first.id]);
+      expect(
+        await getResultIds({ groupSeries: false, readStatus: "unread" }),
+      ).toEqual([second.id]);
+    });
+
     it("일반 검색어 → 시리즈 컬렉션 이름 검색", async () => {
       const [seriesId] = await db("SeriesCollection").insert({
         name: "검색할 시리즈",

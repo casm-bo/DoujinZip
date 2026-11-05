@@ -426,26 +426,32 @@ function buildFilteredQuery(
     }
   }
 
-  if (readStatus === "read") {
-    mainQuery.whereRaw(`(
+  if (filter?.groupSeries === false) {
+    if (readStatus !== "all")
+      mainQuery.where("sub.is_read", readStatus === "read" ? 1 : 0);
+    if (isFavorite) mainQuery.where("sub.is_favorite", 1);
+  } else {
+    if (readStatus === "read") {
+      mainQuery.whereRaw(`(
       (sub.series_collection_id IS NULL AND sub.is_read = 1)
       OR
       (sub.series_collection_id IS NOT NULL AND sub.series_book_count > 0 AND sub.series_read_count = sub.series_book_count)
     )`);
-  } else if (readStatus === "unread") {
-    mainQuery.whereRaw(`(
+    } else if (readStatus === "unread") {
+      mainQuery.whereRaw(`(
       (sub.series_collection_id IS NULL AND sub.is_read = 0)
       OR
       (sub.series_collection_id IS NOT NULL AND (sub.series_book_count <= 0 OR sub.series_read_count < sub.series_book_count))
     )`);
-  }
+    }
 
-  if (isFavorite) {
-    mainQuery.whereRaw(`(
+    if (isFavorite) {
+      mainQuery.whereRaw(`(
       (sub.series_collection_id IS NULL AND sub.is_favorite = 1)
       OR
       (sub.series_collection_id IS NOT NULL AND sub.series_is_favorite = 1)
     )`);
+    }
   }
 
   // 오프라인 상태 필터 (외장하드 분리 등으로 접근 불가한 책)
@@ -511,14 +517,15 @@ export const handleGetBooks = async (
   });
 
   // 시리즈는 정렬 순서상 첫 책만 대표 카드로 노출합니다.
-  mainQuery.where((builder) => {
-    builder.whereNull("sub.series_collection_id").orWhereRaw(`sub.id = (
+  if (params.groupSeries !== false)
+    mainQuery.where((builder) => {
+      builder.whereNull("sub.series_collection_id").orWhereRaw(`sub.id = (
       SELECT SeriesBook.id FROM Book AS SeriesBook
       WHERE SeriesBook.series_collection_id = sub.series_collection_id
       ORDER BY COALESCE(SeriesBook.series_order_index, 2147483647), SeriesBook.id
       LIMIT 1
     )`);
-  });
+    });
 
   // 3. 필터가 적용된 상태에서 전체 카운트 계산
   const totalCountQuery = mainQuery.clone().count("* as count").first();
@@ -553,8 +560,15 @@ export const handleGetBooks = async (
       const related = relations.get(book.id);
       return {
         ...book,
-        series_display_title: presentation?.display_title,
-        series_cover_path: presentation?.coverPath,
+        ...(params.groupSeries === false
+          ? { series_collection_id: null, series_collection_name: null }
+          : {}),
+        series_display_title:
+          params.groupSeries === false
+            ? undefined
+            : presentation?.display_title,
+        series_cover_path:
+          params.groupSeries === false ? undefined : presentation?.coverPath,
         title: extractKoreanTitle(book.title, prioritizeKoreanTitles),
         artists: toNameList(related?.artists),
         tags: toNameList(related?.tags),

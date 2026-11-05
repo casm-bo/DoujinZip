@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import { Grid2X2, List, Minus, Plus } from "lucide-vue-next";
-defineProps<{ viewMode: "grid" | "list"; zoom: number }>();
+defineProps<{
+  viewMode: "grid" | "list";
+  zoom: number;
+  groupSeries?: boolean;
+}>();
 const emit = defineEmits<{
   "update:viewMode": [value: "grid" | "list"];
+  "update:groupSeries": [value: boolean];
   increase: [];
   decrease: [];
 }>();
@@ -14,6 +19,14 @@ const emit = defineEmits<{
     role="group"
     aria-label="보기 설정"
   >
+    <Button
+      v-if="groupSeries !== undefined"
+      variant="ghost"
+      :aria-pressed="groupSeries"
+      :class="{ 'bg-nav-selected': groupSeries }"
+      @click="emit('update:groupSeries', !groupSeries)"
+      >시리즈 묶어보기</Button
+    >
     <div class="flex items-center gap-1" role="group" aria-label="뷰 모드">
       <Button
         variant="ghost"

@@ -30,6 +30,7 @@ import {
 
 // 라이브러리 뷰 설정 타입
 export interface LibraryViewSettings {
+  groupSeries?: boolean;
   sortBy: string;
   sortOrder: "asc" | "desc";
   readStatus: "all" | "read" | "unread";
@@ -121,6 +122,7 @@ const defaults: Config = {
   subscriptionEnabled: true,
   capitalizeNames: false,
   libraryViewSettings: {
+    groupSeries: true,
     sortBy: "added_at",
     sortOrder: "desc",
     readStatus: "all",

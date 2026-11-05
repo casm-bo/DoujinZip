@@ -115,6 +115,7 @@ const sortBy = ref((route.query.sortBy as string) || "added_at");
 const sortOrder = ref<"asc" | "desc">(
   (route.query.sortOrder as "asc" | "desc") || "desc",
 );
+const groupSeries = ref(true);
 const viewMode = ref<"grid" | "list">("grid");
 
 const { schWord: searchQuery } = useQueryAndParams({
@@ -162,6 +163,7 @@ const loadSettings = () => {
       sortOrder: "asc" | "desc";
       readStatus: "all" | "read" | "unread";
       viewMode: "grid" | "list";
+      groupSeries?: boolean;
     };
     const query = route.query;
 
@@ -177,6 +179,7 @@ const loadSettings = () => {
     }
     // viewMode는 URL 쿼리에 포함되지 않으므로 항상 설정에서 불러옴
     viewMode.value = settings.viewMode || "grid";
+    groupSeries.value = settings.groupSeries !== false;
 
     // 설정 적용 완료 후 다음 틱에서 플래그 설정 (이후 변경부터 저장)
     nextTick(() => {
@@ -214,7 +217,7 @@ onActivated(() => {
 
 // Watch for filter/sort changes and save them
 debouncedWatch(
-  [sortBy, sortOrder, readStatus, viewMode],
+  [sortBy, sortOrder, readStatus, viewMode, groupSeries],
   async () => {
     // 설정이 초기화되기 전의 변경은 저장하지 않음
     if (!isConfigLoaded.value || !isSettingsInitialized.value) return;
@@ -224,6 +227,7 @@ debouncedWatch(
       sortOrder: sortOrder.value,
       readStatus: readStatus.value,
       viewMode: viewMode.value,
+      groupSeries: groupSeries.value,
     };
     await ipcRenderer.invoke("set-config", {
       key: "libraryViewSettings",
@@ -249,6 +253,7 @@ const queryKey = computed(
         readStatus: readStatus.value,
         offlineStatus: offlineStatus.value,
         seriesStatus: seriesStatus.value,
+        groupSeries: groupSeries.value,
         sortBy: sortBy.value,
         sortOrder: sortOrder.value,
         isFavorite: isFavorite.value === "favorite",
@@ -1167,6 +1172,7 @@ watch(
         </div>
         <WorkViewControls
           v-model:view-mode="viewMode"
+          v-model:group-series="groupSeries"
           class="ml-auto"
           :zoom="uiStore.thumbnailZoom"
           @increase="uiStore.zoomIn()"
