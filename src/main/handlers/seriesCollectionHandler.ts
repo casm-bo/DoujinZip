@@ -254,7 +254,13 @@ export async function handleGetSeriesCollections(params: {
   pageSize?: number;
   filterType?: "all" | "auto" | "manual";
   minConfidence?: number;
-  sortBy?: "name" | "book_count" | "confidence_score" | "created_at";
+  sortBy?:
+    | "name"
+    | "book_count"
+    | "confidence_score"
+    | "created_at"
+    | "updated_at";
+  pickerSearch?: string;
   sortOrder?: "asc" | "desc";
   /** 검색어 (artist:xxx, tag:xxx, type:xxx 프리픽스 지원) */
   searchQuery?: string;
@@ -392,6 +398,21 @@ export async function handleGetSeriesCollections(params: {
       );
     }
 
+    if (params.pickerSearch?.trim()) {
+      const term = `%${params.pickerSearch.trim()}%`;
+      query.where((builder) =>
+        builder
+          .where("SeriesCollection.name", "like", term)
+          .orWhereExists(
+            db("Book")
+              .join("BookArtist", "Book.id", "BookArtist.book_id")
+              .join("Artist", "Artist.id", "BookArtist.artist_id")
+              .whereRaw("Book.series_collection_id = SeriesCollection.id")
+              .where("Artist.name", "like", term)
+              .select(db.raw("1")),
+          ),
+      );
+    }
     // 정렬 (book_count 정렬은 서브쿼리 사용, 나머지는 직접 정렬)
     if (sortBy === "book_count") {
       query = query.orderByRaw(
@@ -405,7 +426,7 @@ export async function handleGetSeriesCollections(params: {
     // 전체 개수 (페이지네이션 전에 카운트)
     let totalCount: number;
 
-    if (hasPrefixFilters) {
+    if (hasPrefixFilters || params.pickerSearch?.trim()) {
       // HAVING이 있는 경우 서브쿼리로 카운트
       const countQuery = query.clone();
       const countResult = await db
@@ -454,6 +475,12 @@ export async function handleGetSeriesCollections(params: {
           .select("cover_path")
           .first();
 
+        const artists = await db("Artist")
+          .join("BookArtist", "Artist.id", "BookArtist.artist_id")
+          .join("Book", "Book.id", "BookArtist.book_id")
+          .where("Book.series_collection_id", collection.id)
+          .distinct("Artist.name")
+          .orderBy("Artist.name");
         const presentation = await getPresentationService().getSeries(
           collection.name,
         );
@@ -462,6 +489,7 @@ export async function handleGetSeriesCollections(params: {
           presentation: presentation.presentation,
           presentation_key: presentation.presentation_key,
           display_title: presentation.display_title,
+          artists: artists.map((row) => row.name as string),
           book_count: (bookCount as { count: number } | undefined)?.count || 0,
           cover_image:
             presentation.coverPath ||

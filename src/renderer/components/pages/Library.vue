@@ -75,6 +75,7 @@ import BookCard from "../feature/BookCard.vue";
 import BookDetailDialog from "../feature/BookDetailDialog.vue";
 import BookPreviewDialog from "../feature/BookPreviewDialog.vue";
 import BookRowCard from "../feature/BookRowCard.vue";
+import SelectSeriesDialog from "../feature/SelectSeriesDialog.vue";
 import CreateSeriesDialog from "../feature/CreateSeriesDialog.vue";
 import SeriesDetailDialog from "../feature/SeriesDetailDialog.vue";
 import LibraryScanProgress from "../feature/LibraryScanProgress.vue";
@@ -311,6 +312,7 @@ const allSelected = computed(
 );
 const showDeleteDialog = ref(false);
 const showCreateSeriesDialog = ref(false);
+const showSelectSeriesDialog = ref(false);
 const showSeriesConflictDialog = ref(false);
 const replaceExistingSeries = ref(false);
 const conflictingSeriesCount = ref(0);
@@ -996,9 +998,12 @@ watch(
           </Button>
           <Button
             variant="outline"
-            :disabled="selectedCount < 2"
+            :disabled="selectedCount < 1"
             @click="prepareCreateSeries"
-            >시리즈 추가</Button
+            >새 시리즈에 추가</Button
+          >
+          <Button variant="outline" @click="showSelectSeriesDialog = true"
+            >기존 시리즈에 추가</Button
           >
           <Button variant="ghost" @click="clearSelection">선택 종료</Button>
         </template>
@@ -1453,4 +1458,9 @@ watch(
       </AlertDialogContent>
     </AlertDialog>
   </div>
+  <SelectSeriesDialog
+    v-model:open="showSelectSeriesDialog"
+    :book-ids="orderedSelectedBookIds"
+    @added="handleSeriesCreated"
+  />
 </template>

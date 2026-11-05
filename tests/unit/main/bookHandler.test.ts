@@ -386,6 +386,7 @@ import {
 import { store as configStore } from "../../../src/main/handlers/configHandler.js";
 import {
   handleCreateSeriesCollection,
+  handleGetSeriesCollections,
   handleDeleteSeriesCollection,
 } from "../../../src/main/handlers/seriesCollectionHandler.js";
 
@@ -565,6 +566,52 @@ describe("handleGetBooks - 통합 테스트", () => {
           .orderBy("series_order_index")
           .pluck("id"),
       ).toEqual([standalone.id, selected.id, released.id, after.id]);
+    });
+
+    it("creates a series from one selected book", async () => {
+      const book = await seedBook(db, { path: "/single" });
+      const result = await handleCreateSeriesCollection({
+        name: "Single",
+        bookIds: [book.id],
+      });
+      expect(result.success).toBe(true);
+      expect(
+        (await db("Book").where("id", book.id).first()).series_collection_id,
+      ).toBe(result.data.id);
+    });
+    it("searches picker by title or artist and sorts by recent edits", async () => {
+      const [older] = await db("SeriesCollection").insert({
+        name: "Match title",
+        updated_at: "2020-01-01",
+      });
+      const [newer] = await db("SeriesCollection").insert({
+        name: "Other",
+        updated_at: "2021-01-01",
+      });
+      const book = await seedBook(db, {
+        path: "/picker",
+        series_collection_id: newer,
+      });
+      const artist = await seedArtist(db, "Match artist");
+      await linkBookArtist(db, book.id, artist.id);
+      const result = await handleGetSeriesCollections({
+        pickerSearch: "Match",
+        sortBy: "updated_at",
+        sortOrder: "desc",
+        limit: 1,
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.collections.map((row) => row.id)).toEqual([newer]);
+      expect(result.data?.collections[0].artists).toEqual(["Match artist"]);
+      expect(result.data?.pagination.totalCount).toBe(2);
+      const next = await handleGetSeriesCollections({
+        pickerSearch: "Match",
+        sortBy: "updated_at",
+        sortOrder: "desc",
+        limit: 1,
+        page: 2,
+      });
+      expect(next.data?.collections.map((row) => row.id)).toEqual([older]);
     });
 
     it("deletes only the series and releases its episodes", async () => {
