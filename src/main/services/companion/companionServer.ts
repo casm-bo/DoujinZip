@@ -227,6 +227,7 @@ export class CompanionServer {
     private readonly syncService?: CompanionSyncService,
     private readonly subscriptionService?: import("../subscription/subscriptionSync.js").SubscriptionSyncService,
     private readonly getLibraryId?: () => Promise<string>,
+    private readonly discoveryIdentity?: { id: string; name: string },
   ) {}
 
   async start(port = DEFAULT_PORT): Promise<CompanionServerStatus> {
@@ -296,6 +297,8 @@ export class CompanionServer {
     this.clearExpiredPairingCode();
     return {
       running: this.server !== null,
+      serverId: this.discoveryIdentity?.id,
+      serverName: this.discoveryIdentity?.name,
       enabled,
       port: this.port,
       addresses: getPrivateIpv4Addresses(),
@@ -343,6 +346,8 @@ export class CompanionServer {
         success: true,
         data: {
           service: "doujin-menu-companion",
+          serverId: this.discoveryIdentity?.id,
+          serverName: this.discoveryIdentity?.name,
           version: 2,
           pairingAvailable: this.getStatus().pairingAvailable,
           syncGeneration: this.syncGeneration,

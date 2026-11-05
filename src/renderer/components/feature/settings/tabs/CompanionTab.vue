@@ -183,18 +183,24 @@ onUnmounted(() => {
             <span class="size-2 rounded-full bg-green-500" />
             연결 대기 중
           </div>
-          <div v-if="serverAddresses.length" class="space-y-1 text-sm">
-            <p
-              v-for="address in serverAddresses"
-              :key="address"
-              class="font-mono"
-            >
-              {{ address }}
+          <p class="mb-2 font-medium">{{ status.serverName || "DoujinZip" }}</p>
+          <details>
+            <summary class="cursor-pointer text-sm">
+              고급 · 수동 연결 주소
+            </summary>
+            <div v-if="serverAddresses.length" class="space-y-1 text-sm">
+              <p
+                v-for="address in serverAddresses"
+                :key="address"
+                class="font-mono"
+              >
+                {{ address }}
+              </p>
+            </div>
+            <p v-else class="text-muted-foreground text-sm">
+              사용 가능한 사설 IPv4 주소를 찾지 못했습니다.
             </p>
-          </div>
-          <p v-else class="text-muted-foreground text-sm">
-            사용 가능한 사설 IPv4 주소를 찾지 못했습니다.
-          </p>
+          </details>
         </div>
         <div class="flex flex-wrap items-center gap-3 rounded-lg border p-4">
           <Button

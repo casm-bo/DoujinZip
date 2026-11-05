@@ -15,6 +15,8 @@ export interface CompanionDeviceInfo {
 }
 
 export interface CompanionServerStatus {
+  serverId?: string;
+  serverName?: string;
   running: boolean;
   enabled: boolean;
   port: number;

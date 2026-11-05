@@ -1,4 +1,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import { randomUUID } from "crypto";
+import { hostname } from "os";
+import { CompanionDiscovery } from "../services/companion/companionDiscovery.js";
 import Store from "electron-store";
 import {
   createDownloadRequestAdder,
@@ -33,10 +36,21 @@ import {
   handleRetryDownload,
 } from "./downloadQueueHandler.js";
 
-const companionDeviceStore = new Store<{ devices: CompanionDevice[] }>({
+const companionDeviceStore = new Store<{
+  devices: CompanionDevice[];
+  serverId: string;
+}>({
   name: "companion-devices",
-  defaults: { devices: [] },
+  defaults: { devices: [], serverId: "" },
 });
+
+if (!companionDeviceStore.get("serverId"))
+  companionDeviceStore.set("serverId", randomUUID());
+const discoveryIdentity = {
+  id: companionDeviceStore.get("serverId"),
+  name: hostname(),
+};
+const discovery = new CompanionDiscovery();
 
 const deviceStore: CompanionDeviceStore = {
   getDevices: () => companionDeviceStore.get("devices", []),
@@ -109,6 +123,7 @@ export const companionServer = new CompanionServer(
     if (!identity) throw new Error("Library identity is missing");
     return identity.library_id;
   },
+  discoveryIdentity,
 );
 companionServer.subscriptionChanged = (readsOnly) => {
   if (!readsOnly) broadcast("subscriptions-updated");
@@ -137,6 +152,11 @@ export async function startCompanionServer() {
   try {
     const port = store.get("companionPort", 47831);
     const status = await companionServer.start(port);
+    await discovery.start(
+      discoveryIdentity.id,
+      discoveryIdentity.name,
+      status.port,
+    );
     store.set("companionEnabled", true);
     return { success: true, data: { ...status, enabled: true } };
   } catch (error) {
@@ -147,6 +167,7 @@ export async function startCompanionServer() {
 
 export async function stopCompanionServer() {
   try {
+    discovery.stop();
     await companionServer.stop();
     store.set("companionEnabled", false);
     return { success: true };
@@ -204,6 +225,7 @@ export async function registerCompanionHandlers() {
   }
 
   app.on("before-quit", () => {
+    discovery.stop();
     void companionServer.stop();
   });
 }
