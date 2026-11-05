@@ -22,6 +22,7 @@ import { toast } from "vue-sonner";
 import type { Book } from "../../../types/ipc";
 import MetadataField from "./MetadataField.vue";
 import PagePreview from "./PagePreview.vue";
+import DeleteGalleryDialog from "./DeleteGalleryDialog.vue";
 import CoverActions from "./CoverActions.vue";
 
 const props = defineProps<{
@@ -44,6 +45,7 @@ const route = useRoute();
 const detailBook = ref<Book | null>(null);
 const book = computed(() => detailBook.value || props.book);
 const isEditing = ref(false);
+const deleteTarget = ref<Book | null>(null);
 const saving = ref(false);
 const presentationVersion = ref<number | undefined>();
 type ListField = "artists" | "tags" | "series" | "groups" | "characters";
@@ -308,6 +310,16 @@ const searchInDownloader = (text: string, prefix: string) => {
                   <Icon icon="solar:pen-bold-duotone" class="mr-2 h-4 w-4" />
                   편집
                 </Button>
+                <Button
+                  v-if="!isEditing"
+                  variant="destructive"
+                  size="sm"
+                  @click="deleteTarget = book"
+                  ><Icon
+                    icon="solar:trash-bin-trash-bold-duotone"
+                    class="mr-2 h-4 w-4"
+                  />삭제</Button
+                >
               </div>
             </div>
 
@@ -476,4 +488,12 @@ const searchInDownloader = (text: string, prefix: string) => {
       </div>
     </DialogContent>
   </Dialog>
+  <DeleteGalleryDialog
+    :book="deleteTarget"
+    @close="deleteTarget = null"
+    @deleted="
+      open = false;
+      emit('updated');
+    "
+  />
 </template>

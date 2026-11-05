@@ -48,6 +48,7 @@ import type { GalleryPresentation } from "../../../types/presentation";
 import MetadataField from "./MetadataField.vue";
 import { reorderForDrop, type DropPosition } from "./seriesReorder";
 import { getSeriesResumeTarget } from "./seriesResume";
+import DeleteGalleryDialog from "./DeleteGalleryDialog.vue";
 import CoverActions from "./CoverActions.vue";
 
 interface Props {
@@ -91,6 +92,7 @@ const showAddBookDialog = ref(false);
 
 // 책 제거 확인 다이얼로그
 const showRemoveDialog = ref(false);
+const deleteTarget = ref<Book | null>(null);
 const showDeleteSeriesDialog = ref(false);
 const bookToRemove = ref<number | null>(null);
 
@@ -892,6 +894,12 @@ const excludeBookIds = computed(() => books.value.map((book) => book.id));
                       />
                       시리즈에서 제외
                     </ContextMenuItem>
+                    <ContextMenuItem @select="deleteTarget = book"
+                      ><Icon
+                        icon="solar:trash-bin-trash-bold-duotone"
+                        class="h-4 w-4"
+                      />갤러리 삭제</ContextMenuItem
+                    >
                   </ContextMenuContent>
                 </ContextMenu>
 
@@ -982,4 +990,9 @@ const excludeBookIds = computed(() => books.value.map((book) => book.id));
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
+  <DeleteGalleryDialog
+    :book="deleteTarget"
+    @close="deleteTarget = null"
+    @deleted="handleEpisodeUpdated"
+  />
 </template>
