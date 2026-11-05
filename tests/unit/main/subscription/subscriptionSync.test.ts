@@ -74,6 +74,24 @@ describe("subscription synchronization", () => {
     ).rejects.toThrow("reused");
     expect((await db("Subscription")).length).toBe(1);
   });
+  it("acknowledges the same edit from a second device without a new change", async () => {
+    const initial = await service.save("first-device", "create", value);
+    const edited = { ...initial.value, name: "Shared edit" };
+    const first = await service.save("first-device", "edit", edited);
+    const cursor = (await service.changes(0)).cursor;
+
+    expect(await service.save("second-device", "edit", edited)).toEqual(first);
+    expect((await service.changes(cursor)).changes).toEqual([]);
+    expect(
+      await service.save("second-device", "different", {
+        ...edited,
+        enabled: false,
+      }),
+    ).toMatchObject({
+      status: "conflict",
+      value: first.value,
+    });
+  });
   it("preserves concurrent edits and detects duplicate conditions", async () => {
     const first = await service.save("test-device", "mutation-a", value);
     await db("Subscription")

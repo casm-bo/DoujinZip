@@ -116,10 +116,22 @@ export class SubscriptionSyncService {
         .where("normalized_query", normalized)
         .whereNot("sync_id", value.id)
         .first();
-      if (duplicate) result = { status: "conflict", value: toValue(duplicate) };
-      else if ((current?.sync_version ?? 0) !== value.version) {
-        if (!current) throw new Error("Unknown subscription version");
-        result = { status: "conflict", value: toValue(current) };
+      const currentValue = current ? toValue(current) : undefined;
+      if (
+        currentValue &&
+        currentValue.name === value.name.trim() &&
+        currentValue.query === value.query.trim() &&
+        JSON.stringify([...new Set(currentValue.languages)].sort()) ===
+          JSON.stringify([...new Set(value.languages)].sort()) &&
+        currentValue.enabled === value.enabled &&
+        currentValue.deleted === value.deleted
+      ) {
+        result = { status: "applied", value: currentValue };
+      } else if (duplicate)
+        result = { status: "conflict", value: toValue(duplicate) };
+      else if ((currentValue?.version ?? 0) !== value.version) {
+        if (!currentValue) throw new Error("Unknown subscription version");
+        result = { status: "conflict", value: currentValue };
       } else {
         const fields = {
           query: value.query.trim(),
