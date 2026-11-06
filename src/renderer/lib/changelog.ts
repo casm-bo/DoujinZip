@@ -19,21 +19,21 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "feature",
-        title: "기능",
+        title: "✨ 기능",
         items: [
           "검색 결과에 체크박스·Ctrl/Shift 다중 선택·우클릭 메뉴·선택 다운로드를 추가하고, 구독 관리에 정렬 기능을 추가했습니다.",
         ],
       },
       {
         type: "fix",
-        title: "버그 수정",
+        title: "🐛 버그 수정",
         items: [
           "작가명 공백·밑줄을 모두 인식하도록 수정하고, 구독 관리창이 바로 닫히던 문제를 해결했습니다.",
         ],
       },
       {
         type: "etc",
-        title: "UI 개선",
+        title: "🎨 UI 개선",
         items: [
           "구독 전 확인창을 추가하고 관리창의 크기·편집·언어 선택·카드 대비를 개선했습니다. Hitomi 언어 목록 자동 갱신과 한국어·일본어·영어·중국어 우선 표시를 적용했습니다. 목록 보기의 기존 150%를 새 100%로 조정하고 태그 잘림을 수정했습니다.",
         ],
@@ -45,7 +45,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "오류 발생 시 앱 종료",
+        title: "🐛 오류 발생 시 앱 종료",
         items: [
           "시작 오류 등 처리되지 않은 메인 프로세스 오류 발생 시 오류창을 닫으면 앱 프로세스도 종료됩니다.",
         ],
@@ -57,21 +57,21 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "feature",
-        title: "동기화·백업",
+        title: "🔄 동기화·백업",
         items: [
           "DB 고유 ID를 유지하고 백업에 포함하며, 같은 DB 재연결 시 저장 범위를 재사용합니다. 구독 충돌과 재구독 처리를 개선했습니다.",
         ],
       },
       {
         type: "feature",
-        title: "썸네일·캐시",
+        title: "🖼️ 썸네일·캐시",
         items: [
           "잘못된 표지 경로를 수정하고 미리보기를 최대 256MB RAM 캐시로 전환했습니다. ZIP 표지는 메모리에서 추출하며 이전 임시 폴더를 정리합니다.",
         ],
       },
       {
         type: "feature",
-        title: "UI",
+        title: "🎨 UI",
         items: [
           "연결 성공 시 페어링 코드를 닫고, 썸네일 재생성·메타데이터 재스캔 진행 상태를 표시합니다.",
         ],
@@ -83,7 +83,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "etc",
-        title: "업데이트 전 확인: 앱 데이터 폴더 분리",
+        title: "⚠️ 업데이트 전 확인: 앱 데이터 폴더 분리",
         items: [
           "원본 앱과 충돌하지 않도록 데이터 폴더를 doujin-menu에서 doujinzip으로 분리했습니다. 기존 데이터는 자동 이전하지 않습니다.",
           "기존 데이터 폴더 전체를 백업하고 두 앱을 완전히 종료한 뒤, 필요한 파일과 폴더를 새 doujinzip 폴더로 이전하세요. 작품 원본 파일은 별도로 보관하세요.",
@@ -91,7 +91,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "Android 스타일의 데스크톱 UI",
+        title: "🎨 Android 스타일의 데스크톱 UI",
         items: [
           "Android 스타일 테마를 추가하고 탐색 메뉴·검색창·도구 모음과 아이콘을 정리했습니다.",
           "라이브러리와 검색 결과의 카드·목록 디자인을 통일하고 격자·목록 전환과 썸네일 크기 조절을 화면에서 바로 사용할 수 있도록 했습니다.",
@@ -101,7 +101,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "작품 테두리 설정",
+        title: "🎨 작품 테두리 설정",
         items: [
           "일반 작품·시리즈·즐겨찾기별 테두리 색상과 두께를 설정할 수 있습니다.",
           "두께를 0으로 설정하면 테두리를 끕니다. 즐겨찾기 테두리가 우선 적용됩니다.",
@@ -109,7 +109,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "상세보기와 표지 변경",
+        title: "🖼️ 상세보기와 표지 변경",
         items: [
           "상세 화면의 표지·메타데이터 영역을 약 60:40 비율로 조정하고, 책 상세 미리보기의 높이 제한을 풀어 마지막 페이지까지 내려볼 수 있도록 했습니다.",
           "책은 내부 페이지 또는 외부 이미지로, 시리즈는 소속 작품 표지 또는 외부 이미지로 대표 표지를 변경할 수 있습니다.",
@@ -119,7 +119,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "검색·다운로드 개선",
+        title: "📥 검색·다운로드 개선",
         items: [
           "한국어 제목 우선 설정을 검색 결과와 다운로드 상세보기에도 적용했습니다.",
           "다운로드 상세보기에서 바로 다운로드를 시작할 수 있습니다.",
@@ -127,7 +127,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "중복·ID 검토 개선",
+        title: "🔎 중복·ID 검토 개선",
         items: [
           "히토미 ID가 없는 작품을 실제 중복 후보와 구분해 표시합니다.",
           "보관할 ID 없는 작품을 '중복 아님'으로 처리해 검토 목록에서 제외할 수 있습니다. 이후 ID·제목 중복 검사는 유지됩니다.",
@@ -137,7 +137,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "사용자 지정 표지 백업·복원",
+        title: "💾 사용자 지정 표지 백업·복원",
         items: [
           "DB·설정 백업에 사용자 지정 표지 폴더를 포함했습니다.",
           "복원 시 기존 표지를 보존하며, 표지 폴더가 없는 이전 백업도 복원할 수 있습니다.",
@@ -150,7 +150,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "refactor",
-        title: "다운로드 직접 기록 및 HDD 모드 통합",
+        title: "📥 다운로드 직접 기록 및 HDD 모드 통합",
         items: [
           "이미지를 한 장씩 ZIP/CBZ에 직접 기록하고 중단된 위치에서 이어받습니다.",
           "한 작품의 이미지를 RAM 대기열에 받아 디스크 기록과 병행하며, 현재 작품의 저장이 끝난 뒤 다음 작품을 다운로드합니다.",
@@ -159,7 +159,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "대용량 다운로드와 이전 임시파일 안내",
+        title: "⚠️ 대용량 다운로드와 이전 임시파일 안내",
         items: [
           "RAM 대기열은 한 작품 단위입니다. 디스크 기록이 느리거나 작품 용량이 크면 메모리 사용량이 커질 수 있습니다.",
           "이전 HDD 모드의 임시파일은 자동 삭제하지 않습니다. 필요한 파일의 저장 완료 여부를 확인한 뒤 정리하세요.",
@@ -167,7 +167,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "런타임과 의존성 보안 업데이트",
+        title: "🛡️ 런타임과 의존성 보안 업데이트",
         items: [
           "Electron을 43.8.6으로 업데이트하고 네트워크 처리 및 관련 의존성의 보안 패치를 적용했습니다.",
           "Vite와 Vitest를 업데이트하고 Windows 패키징 및 네이티브 모듈 호환성을 확인했습니다.",
@@ -180,7 +180,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "etc",
-        title: "설치 전 필독: 데이터 백업과 앱 전환",
+        title: "⚠️ 설치 전 필독: 데이터 백업과 앱 전환",
         items: [
           "설치 식별자가 변경되었습니다. 전환 전 기존 앱에서 데이터를 백업하고 작품 원본 파일도 별도로 보관하세요.",
           "기존 데이터 폴더를 계속 사용합니다. 두 앱을 동시에 실행하지 말고, 새 앱에서 라이브러리·설정·페어링을 확인하세요. 데이터가 정상 표시되면 별도 복원은 필요하지 않습니다.",
@@ -190,7 +190,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "동인집 이름과 아이콘",
+        title: "🎨 동인집 이름과 아이콘",
         items: [
           "앱 이름을 동인집(DoujinZip)으로 변경하고 검정 배경의 만화책·ZIP 지퍼 아이콘을 실행파일·트레이·창·상단 로고에 적용했습니다.",
         ],
@@ -202,7 +202,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "feature",
-        title: "태그 구독과 신작 피드",
+        title: "🔔 태그 구독과 신작 피드",
         items: [
           "작가·태그·언어·제외 조건으로 구독을 등록·수정·일시정지·삭제하고, 여러 구독의 결과를 중복 없는 통합 피드로 확인할 수 있습니다.",
           "앱 실행 중 1시간마다 신작을 확인하며 수동 새로고침, 미확인 표시, 앱 내부 신작 알림을 지원합니다. 최초 등록 시 기존 작품은 신작 알림에서 제외합니다.",
@@ -210,7 +210,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "PC·Android 구독 동기화",
+        title: "🔄 PC·Android 구독 동기화",
         items: [
           "구독 이름·태그 조건·언어·활성 상태·삭제와 알림 읽음 상태를 PC와 Android 사이에서 양방향으로 동기화합니다.",
           "휴대폰에서 바꾼 구독이 PC 목록과 피드에 반영되며, 연결이 끊겼다가 복구되어도 구독이 중복 등록되지 않습니다.",
@@ -218,7 +218,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "메타데이터 편집과 표지 동기화",
+        title: "✏️ 메타데이터 편집과 표지 동기화",
         items: [
           "온라인 갤러리와 시리즈의 제목·작가·그룹·태그·캐릭터·유형·언어·발행일 편집을 추가하고, 기존 작품 편집도 Android와 동기화합니다.",
           "시리즈 메타데이터는 개별 회차와 따로 저장하며, 다른 기기의 동시 수정을 감지해 덮어쓰기 전 충돌을 알립니다.",
@@ -227,7 +227,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "선택한 표지 표시와 보존",
+        title: "🖼️ 선택한 표지 표시와 보존",
         items: [
           "Android에서 작품 페이지를 표지로 선택했을 때 PC에서 기본 이미지로 표시되던 문제와 외부 이미지 표지가 반영되지 않던 문제를 수정했습니다.",
           "시리즈 목록·상세보기에도 지정한 제목과 표지를 반영하고, 썸네일 재생성·정리 작업이 사용자 표지를 덮어쓰거나 삭제하지 않도록 했습니다.",
@@ -235,7 +235,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "feature",
-        title: "검색 필터와 자동완성 개선",
+        title: "🔎 검색 필터와 자동완성 개선",
         items: [
           "다운로더에 일간·주간·월간·연간 인기 정렬과 사용자 지정 차단 태그 설정을 추가했습니다. 갤러리 ID 직접 검색에는 차단 태그를 적용하지 않습니다.",
           "숫자만 입력하는 갤러리 ID 검색을 지원하고, 자동완성 목록 표시와 태그의 공백·밑줄 처리를 개선했습니다.",
@@ -243,7 +243,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "라이브러리·뷰어·실행 안정화",
+        title: "🔧 라이브러리·뷰어·실행 안정화",
         items: [
           "이미지 폴더와 압축파일에서 페이지를 같은 순서로 표시하고, 표지와 썸네일을 더 안정적으로 불러옵니다.",
           "검색 결과와 라이브러리를 더 빠르게 표시하고, 다운로드 진행 상황 갱신과 스캔 완료 알림을 개선했습니다.",
@@ -876,7 +876,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: [
           "라이브러리와 시리즈 관리 페이지의 그리드/리스트 전환 버튼을 통일했습니다. (이로 인해 기본값이 변경되었습니다.)",
         ],
@@ -947,7 +947,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: ["시리즈 감지 기능을 개선했습니다."],
       },
     ],
@@ -978,7 +978,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: ["모달 창에서 ESC 키로 닫을 때의 동작이 개선되었습니다."],
       },
     ],
@@ -1062,7 +1062,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: [
           "뷰어 도움말에 랜덤 책 이동, 자동 다음 책, 책 정보 단축키 안내를 추가했습니다.",
           "다운로더 도움말에 태그 제외 검색 기능 설명을 추가했습니다.",
@@ -1084,7 +1084,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: [
           "다운로더 큐 목록에서 최신 항목이 위에 표시되도록 변경되었습니다.",
           "일부 UI 요소에 선택한 컬러 테마가 적용되도록 개선되었습니다.",
@@ -1132,7 +1132,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: ["뷰어에서 PageUp, PageDown 단축키를 추가했습니다."],
       },
     ],
@@ -1173,7 +1173,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: ["다운로더 뷰에 미리보기 버튼이 추가되었습니다."],
       },
     ],
@@ -1191,7 +1191,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: ["다운로더의 썸네일 모드에서 썸네일 크기를 키웠습니다."],
       },
     ],
@@ -1230,7 +1230,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: ["다운로더 화면에 태그 검색에 대한 안내 문구를 추가했습니다."],
       },
     ],
@@ -1343,7 +1343,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "etc",
-        title: "기타",
+        title: "📝 기타",
         items: ["다운로더 단축키 간섭 문제를 수정했습니다."],
       },
     ],
