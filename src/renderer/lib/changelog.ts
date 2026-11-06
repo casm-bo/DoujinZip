@@ -15,13 +15,12 @@ export interface Changelog {
  */
 export const changelogData: Changelog[] = [
   {
-    version: "2.8.2",
+    version: "2.9.0",
     changes: [
       {
         type: "feature",
         title: "✨ 기능",
         items: [
-          "검색 결과에 체크박스·Ctrl/Shift 다중 선택·우클릭 메뉴·선택 다운로드를 추가하고, 구독 관리에 정렬 기능을 추가했습니다.",
           "시리즈 상세 우클릭에 읽음 표시·즐겨찾기·파일 위치·새 창 열기·메타데이터 재스캔·시리즈 제외와 갤러리 삭제를 추가했습니다.",
           "갤러리 상세에 삭제 버튼을 추가하고, 휴지통 이동과 영구 삭제를 선택할 수 있도록 했습니다.",
           "작품 하나도 새 시리즈에 추가할 수 있으며, 선택한 작품을 기존 시리즈에 추가할 수 있습니다.",
@@ -31,9 +30,8 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
-          "작가명 공백·밑줄을 모두 인식하도록 수정하고, 구독 관리창이 바로 닫히던 문제를 해결했습니다.",
           "PC에서 작품을 삭제한 뒤 Android 목록과 다운로드 상태가 갱신되도록 수정했습니다.",
           "라이브러리 변경·백업 복원 후 파일 검증과 콘텐츠 캐시 갱신을 보강하고, 검증이 필요하면 PC 새로고침을 안내합니다.",
           "라이브러리 새로고침 오류를 수정하고 썸네일 로딩을 지연 처리했습니다.",
@@ -46,11 +44,37 @@ export const changelogData: Changelog[] = [
         type: "etc",
         title: "🎨 UI 개선",
         items: [
-          "구독 전 확인창을 추가하고 관리창의 크기·편집·언어 선택·카드 대비를 개선했습니다. Hitomi 언어 목록 자동 갱신과 한국어·일본어·영어·중국어 우선 표시를 적용했습니다. 목록 보기의 기존 150%를 새 100%로 조정하고 태그 잘림을 수정했습니다.",
           "라이브러리에 시리즈 묶어보기 옵션을 추가하고 기본값을 켜기로 설정했습니다.",
           "시리즈 우클릭 메뉴에 아이콘을 추가하고, 기존 시리즈 선택창에 검색·정렬·표지·제목·작가를 표시합니다.",
           "모바일 연동의 연결 주소는 고급 설정에서 펼쳐 볼 수 있도록 정리했습니다.",
           "과거 업데이트 기록의 제목에 빠진 이모티콘을 보완했습니다.",
+        ],
+      },
+    ],
+  },
+
+  {
+    version: "2.8.2",
+    changes: [
+      {
+        type: "feature",
+        title: "✨ 기능",
+        items: [
+          "검색 결과에 체크박스·Ctrl/Shift 다중 선택·우클릭 메뉴·선택 다운로드를 추가하고, 구독 관리에 정렬 기능을 추가했습니다.",
+        ],
+      },
+      {
+        type: "fix",
+        title: "🐞 버그 수정",
+        items: [
+          "작가명 공백·밑줄을 모두 인식하도록 수정하고, 구독 관리창이 바로 닫히던 문제를 해결했습니다.",
+        ],
+      },
+      {
+        type: "etc",
+        title: "🎨 UI 개선",
+        items: [
+          "구독 전 확인창을 추가하고 관리창의 크기·편집·언어 선택·카드 대비를 개선했습니다. Hitomi 언어 목록 자동 갱신과 한국어·일본어·영어·중국어 우선 표시를 적용했습니다. 목록 보기의 기존 150%를 새 100%로 조정하고 태그 잘림을 수정했습니다.",
         ],
       },
     ],
@@ -60,7 +84,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 오류 발생 시 앱 종료",
+        title: "🐞 오류 발생 시 앱 종료",
         items: [
           "시작 오류 등 처리되지 않은 메인 프로세스 오류 발생 시 오류창을 닫으면 앱 프로세스도 종료됩니다.",
         ],
@@ -561,7 +585,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 동기화 및 라이브러리 안정화",
+        title: "🐞 동기화 및 라이브러리 안정화",
         items: [
           "모바일 동기화 중 책의 식별 정보와 시리즈 순서가 안정적으로 유지되도록 개선했습니다.",
           "책이나 라이브러리 폴더를 이동·제거할 때 원본 파일과 앱 데이터가 안전하게 처리되도록 개선했습니다.",
@@ -589,7 +613,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "특정 정렬 기준에서 다음/이전 책 단축키가 올바르게 동작하지 않던 문제를 수정했습니다.",
         ],
@@ -617,7 +641,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "새로고침 시 시리즈 감지가 불필요하게 다시 실행되던 문제를 수정했습니다.",
         ],
@@ -639,7 +663,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "시리즈 상세 모달의 스크롤 버그를 수정하고 사용성을 개선했습니다.",
           "뷰어에서 페이지 순서가 영문 파일명이 한글보다 먼저 오도록 정렬 순서를 수정했습니다.",
@@ -652,7 +676,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "라이브러리 스캔 시 메모리 부족(OOM) 현상이 발생하던 회귀 문제를 수정했습니다.",
         ],
@@ -682,7 +706,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "다운로더 뷰 모드(그리드/리스트) 선택이 유지되지 않던 문제를 수정했습니다.",
           "설정 변경 후 일부 항목이 즉시 반영되지 않던 문제를 수정했습니다.",
@@ -705,7 +729,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "일부 검색어가 올바르게 동작하지 않던 문제를 수정했습니다.",
           "시리즈 정렬이 올바르게 동작하지 않던 문제를 수정했습니다.",
@@ -728,7 +752,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "검색 시 작가, 태그 등의 관계 데이터가 정확하게 일치하도록 수정했습니다.",
         ],
@@ -750,7 +774,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "시리즈 내 책 순서가 올바르지 않던 문제를 수정했습니다.",
           "앱 시작 시 검색 인덱스 구축으로 인해 화면이 멈추던 문제를 수정했습니다.",
@@ -786,7 +810,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "뷰어 진입 시 상단바 자동 숨김 설정이 올바르게 적용되지 않던 문제를 수정했습니다.",
         ],
@@ -840,7 +864,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "ZIP 파일 스캔 시 파일 핸들 누수 문제를 수정했습니다.",
           "이미지 로딩 실패 시 재시도 횟수 제한을 제거하여 안정성을 개선했습니다.",
@@ -853,7 +877,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "뷰어에서 다른 책으로 이동할 때 현재 페이지가 저장되지 않던 문제를 수정했습니다.",
         ],
@@ -865,7 +889,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "설정에서 info.txt 일괄 생성 기능이 중첩 폴더에서도 동작하도록 수정했습니다.",
         ],
@@ -886,7 +910,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: ["열람 기록이 올바르게 기록되지 않던 문제를 수정했습니다."],
       },
       {
@@ -911,7 +935,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "시리즈 관리 페이지에서 시리즈가 올바르게 정렬되지 않던 문제를 수정했습니다.",
         ],
@@ -972,7 +996,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "시리즈 관리 페이지에서 시리즈 목록이 표시되지 않던 문제를 수정했습니다.",
         ],
@@ -1011,7 +1035,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "윈도우에서 긴 파일 경로로 인해 발생하던 문제를 수정했습니다.",
           "다운로더 미리보기 단축키가 올바르게 작동하지 않던 문제를 수정했습니다.",
@@ -1032,7 +1056,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "라이브러리 정렬 옵션이 앱 재시작 후에도 유지됩니다.",
           "다른 페이지로 이동 후 라이브러리로 돌아왔을 때 정렬 설정이 초기화되던 문제를 수정했습니다.",
@@ -1067,7 +1091,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "즐겨찾기 기능이 작동하지 않던 문제를 수정했습니다.",
           "새 창으로 열기 기능이 프로덕션 빌드에서 작동하지 않던 문제를 수정했습니다.",
@@ -1090,7 +1114,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "임시 파일 크기 조회 시 발생하던 오류가 수정되었습니다.",
           "다운로더에서 다운로드 완료된 책 삭제 기능이 수정되었습니다.",
@@ -1122,7 +1146,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "통계에서 1페이지만 본 책은 '안읽음'으로 분류되도록 수정되었습니다.",
         ],
@@ -1157,7 +1181,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: ["압축파일의 썸네일 생성 시 발생하던 문제가 수정되었습니다."],
       },
     ],
@@ -1181,7 +1205,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "압축파일의 썸네일 생성 시 발생하던 일부 문제가 수정되었습니다.",
         ],
@@ -1198,7 +1222,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "다운로더에서 제목으로 검색이 되지 않던 문제를 수정했습니다.",
           "윈도우에서 폴더 이름이 이름 규칙에 적합하지 않게 생성되던 오류를 수정했습니다.",
@@ -1238,7 +1262,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "라이브러리에서 한국어 제목이 올바르게 표시되지 않던 문제를 수정했습니다.",
         ],
@@ -1263,7 +1287,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "검색창 자동완성 목록에서 항목을 클릭해도 적용이 되지 않던 문제를 수정했습니다.",
           "작가를 기준으로 정렬했을 때 다음책으로 넘길 수 없던 문제를 수정했습니다.",
@@ -1284,7 +1308,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "더블 페이지 모드에서 페이지가 올바르게 표시되지 않던 문제를 수정했습니다.",
           "CBZ 형식의 파일을 지원합니다.",
@@ -1305,7 +1329,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "라이브러리에서 랜덤으로 책을 선택할 때, 검색 조건에 맞는 모든 책 중에서 선택되도록 수정되었습니다.",
           "압축파일의 썸네일 처리 시 발생하던 문제가 수정되었습니다.",
@@ -1328,7 +1352,7 @@ export const changelogData: Changelog[] = [
       },
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "이미지 정렬 순서가 수정되었습니다.",
           "압축 파일 내 이미지 정렬이 개선되었습니다.",
@@ -1353,7 +1377,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: ["긴 파일 경로를 처리하지 못하던 문제를 수정했습니다."],
       },
       {
@@ -1381,7 +1405,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "라이브러리 폴더 삭제 시 책 데이터를 삭제하도록 수정했습니다.",
           "하위 폴더 탐색 시 발생하는 버그를 수정했습니다.",
@@ -1394,7 +1418,7 @@ export const changelogData: Changelog[] = [
     changes: [
       {
         type: "fix",
-        title: "🐛 버그 수정",
+        title: "🐞 버그 수정",
         items: [
           "앱 자동 업데이트 로직을 수정했습니다.",
           "불필요한 의존성을 제거했습니다.",
