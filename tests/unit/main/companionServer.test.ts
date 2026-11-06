@@ -867,6 +867,51 @@ describe("CompanionServer", () => {
     expect(devices).toHaveLength(2);
   });
 
+  it("migrates only the authenticated legacy device and reuses it on re-pairing", async () => {
+    const token = await pairTestDevice();
+    const original = { ...devices[0] };
+    await pairTestDevice();
+    const clientId = "c".repeat(64);
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      "X-DoujinZip-Client-Id": clientId,
+    };
+    expect((await fetch(`${baseUrl}/v1/connection`, { headers })).status).toBe(
+      200,
+    );
+    expect((await fetch(`${baseUrl}/v1/connection`, { headers })).status).toBe(
+      200,
+    );
+    expect(devices).toHaveLength(2);
+    expect(devices[0]).toMatchObject({
+      ...original,
+      lastSeenAt: expect.any(String),
+      clientId,
+    });
+    expect(devices[1].clientId).toBeUndefined();
+    await pairTestDevice(clientId);
+    expect(devices).toHaveLength(2);
+    expect(devices[0].id).toBe(original.id);
+  });
+
+  it("rejects unauthenticated, invalid, and conflicting identity migration", async () => {
+    const token = await pairTestDevice("a".repeat(64));
+    const otherToken = await pairTestDevice();
+    const request = (token: string, clientId: string) =>
+      fetch(`${baseUrl}/v1/connection`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-DoujinZip-Client-Id": clientId,
+        },
+      });
+    expect((await request("invalid-token", "b".repeat(64))).status).toBe(401);
+    expect((await request(otherToken, "invalid")).status).toBe(400);
+    expect((await request(otherToken, "a".repeat(64))).status).toBe(409);
+    expect((await request(token, "b".repeat(64))).status).toBe(409);
+    expect(devices[0].clientId).toBe("a".repeat(64));
+    expect(devices[1].clientId).toBeUndefined();
+  });
+
   it("does not merge legacy devices solely by name", async () => {
     await pairTestDevice();
     await pairTestDevice("a".repeat(64));

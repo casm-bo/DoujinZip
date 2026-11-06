@@ -392,6 +392,36 @@ export class CompanionServer {
     }
 
     if (request.method === "GET" && pathname === "/v1/connection") {
+      const clientId = request.headers["x-doujinzip-client-id"];
+      if (clientId !== undefined) {
+        if (typeof clientId !== "string" || !/^[a-f0-9]{64}$/.test(clientId)) {
+          this.sendJson(response, 400, {
+            success: false,
+            error: "Invalid client identity",
+          });
+          return;
+        }
+        const devices = this.deviceStore.getDevices();
+        if (
+          (device.clientId && device.clientId !== clientId) ||
+          devices.some(
+            (item) => item.id !== device.id && item.clientId === clientId,
+          )
+        ) {
+          this.sendJson(response, 409, {
+            success: false,
+            error: "Client identity already assigned",
+          });
+          return;
+        }
+        if (!device.clientId) {
+          this.deviceStore.setDevices(
+            devices.map((item) =>
+              item.id === device.id ? { ...item, clientId } : item,
+            ),
+          );
+        }
+      }
       this.sendJson(response, 200, {
         success: true,
         data: {
