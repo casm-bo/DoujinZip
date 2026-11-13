@@ -1,5 +1,10 @@
 import { createHash, randomBytes, randomInt, randomUUID } from "crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
+import { createReadStream, createWriteStream, openSync, renameSync, statSync } from "fs";
+import { mkdir, rm } from "fs/promises";
+import { join } from "path";
+import { Transform } from "stream";
+import { pipeline } from "stream/promises";
 import { networkInterfaces } from "os";
 import type { AddressInfo } from "net";
 import type { Readable } from "stream";
@@ -27,6 +32,7 @@ import {
 
 const DEFAULT_PORT = 47831;
 const MAX_REQUEST_BODY_BYTES = 64 * 1024;
+const MAX_BACKUP_BYTES = 65 * 1024 * 1024;
 const PAIRING_CODE_TTL_MS = 5 * 60 * 1000;
 const PAIRING_ATTEMPT_WINDOW_MS = 60 * 1000;
 const MAX_PAIRING_ATTEMPTS_PER_WINDOW = 5;
@@ -239,6 +245,7 @@ export class CompanionServer {
     private readonly subscriptionService?: import("../subscription/subscriptionSync.js").SubscriptionSyncService,
     private readonly getLibraryId?: () => Promise<string>,
     private readonly discoveryIdentity?: { id: string; name: string },
+    private readonly androidBackupDirectory?: string,
   ) {}
 
   async start(port = DEFAULT_PORT): Promise<CompanionServerStatus> {
@@ -388,6 +395,11 @@ export class CompanionServer {
         success: false,
         error: "Authentication required",
       });
+      return;
+    }
+
+    if (pathname === "/v1/android-backup" && this.androidBackupDirectory) {
+      await this.handleAndroidBackup(request, response, device.id);
       return;
     }
 
@@ -1271,6 +1283,78 @@ export class CompanionServer {
     this.connectionTimers.clear();
     this.deviceActivity.clear();
     this.deviceConnectionStates.clear();
+  }
+
+  private async handleAndroidBackup(
+    request: IncomingMessage, response: ServerResponse, deviceId: string,
+  ): Promise<void> {
+    if (!/^[a-f0-9-]{36}$/i.test(deviceId)) {
+      response.writeHead(400).end();
+      return;
+    }
+    const directory = join(this.androidBackupDirectory!, deviceId);
+    const file = join(directory, "latest.zip");
+    const version = () => {
+      const stats = statSync(file, { bigint: true, throwIfNoEntry: false });
+      return stats ? `"${stats.ino}-${stats.mtimeNs}-${stats.size}"` : undefined;
+    };
+    const current = version();
+    if (request.method === "HEAD" || request.method === "GET") {
+      if (request.headers["if-match"] && request.headers["if-match"] !== current) {
+        response.writeHead(412).end();
+      } else if (!current) {
+        response.writeHead(204).end();
+      } else {
+        const headers = { ETag: current, "Cache-Control": "no-store", "Content-Type": "application/zip",
+          "Last-Modified": statSync(file).mtime.toUTCString() };
+        if (request.method === "HEAD") response.writeHead(200, headers).end();
+        else {
+          const stream = createReadStream(file, { fd: openSync(file, "r") });
+          response.writeHead(200, headers);
+          await pipeline(stream, response);
+        }
+      }
+      return;
+    }
+    if (request.method !== "PUT") {
+      response.writeHead(405).end();
+      return;
+    }
+    const matches = (etag?: string) => etag ? request.headers["if-match"] === etag : request.headers["if-none-match"] === "*";
+    if (!matches(current)) {
+      request.resume();
+      response.writeHead(412).end();
+      return;
+    }
+    const length = Number(request.headers["content-length"]);
+    if (!Number.isSafeInteger(length) || length < 4 || length > MAX_BACKUP_BYTES) {
+      request.resume();
+      response.writeHead(413).end();
+      return;
+    }
+    await mkdir(directory, { recursive: true });
+    const temporary = join(directory, `${randomUUID()}.tmp`);
+    try {
+      let received = 0;
+      let signature = Buffer.alloc(0);
+      await pipeline(request, new Transform({
+        transform(chunk: Buffer, _encoding, callback) {
+          received += chunk.length;
+          if (signature.length < 4) signature = Buffer.concat([signature, chunk.subarray(0, 4 - signature.length)]);
+          callback(received > length ? new Error("Backup too large") : null, chunk);
+        },
+      }), createWriteStream(temporary, { flags: "wx", mode: 0o600 }));
+      if (received !== length || signature.readUInt32LE() !== 0x04034b50) {
+        response.writeHead(400).end();
+      } else if (this.authenticate(request)?.id !== deviceId || !matches(version())) {
+        response.writeHead(412).end();
+      } else {
+        renameSync(temporary, file);
+        response.writeHead(204, { ETag: version()! }).end();
+      }
+    } finally {
+      await rm(temporary, { force: true });
+    }
   }
 
   private async readJsonBody(

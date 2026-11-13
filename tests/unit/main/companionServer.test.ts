@@ -9,6 +9,9 @@ import {
   type CompanionSyncService,
 } from "../../../src/main/services/companion/companionServer";
 import { Readable } from "stream";
+import { mkdtemp, rm } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
 
 describe("CompanionServer", () => {
   let devices: CompanionDevice[];
@@ -18,6 +21,7 @@ describe("CompanionServer", () => {
   let downloadService: CompanionDownloadService;
   let libraryService: CompanionLibraryService;
   let syncService: CompanionSyncService;
+  let backups: string;
   const hitomiService = {
     searchGalleries: vi.fn(),
     getGalleryDetails: vi.fn(),
@@ -25,6 +29,7 @@ describe("CompanionServer", () => {
   };
 
   beforeEach(async () => {
+    backups = await mkdtemp(join(tmpdir(), "companion-backup-fixture-"));
     devices = [];
     deviceStore = {
       getDevices: () => devices.map((device) => ({ ...device })),
@@ -83,6 +88,8 @@ describe("CompanionServer", () => {
       syncService,
       undefined,
       async () => "library-fixture",
+      undefined,
+      backups,
     );
     const status = await server.start(0);
     baseUrl = `http://127.0.0.1:${status.port}`;
@@ -90,6 +97,27 @@ describe("CompanionServer", () => {
 
   afterEach(async () => {
     await server.stop();
+    await rm(backups, { recursive: true, force: true });
+  });
+
+  it("keeps a separate backup per authenticated device across re-pairing", async () => {
+    const identity = "a".repeat(64);
+    const token = await pairTestDevice(identity);
+    const url = `${baseUrl}/v1/android-backup`;
+    const headers = { Authorization: `Bearer ${token}` };
+    const body = Buffer.from([0x50, 0x4b, 3, 4, 42]);
+    expect((await fetch(url, { method: "HEAD", headers })).status).toBe(204);
+    const saved = await fetch(url, { method: "PUT", headers: { ...headers, "If-None-Match": "*" }, body });
+    expect(saved.status).toBe(204);
+    const version = saved.headers.get("etag")!;
+    expect((await fetch(url, { method: "PUT", headers: { ...headers, "If-None-Match": "*" }, body })).status).toBe(412);
+    expect((await fetch(url)).status).toBe(401);
+    const other = await pairTestDevice("b".repeat(64));
+    expect((await fetch(url, { method: "HEAD", headers: { Authorization: `Bearer ${other}` } })).status).toBe(204);
+    const rePaired = await pairTestDevice(identity);
+    const restored = await fetch(url, { headers: { Authorization: `Bearer ${rePaired}`, "If-Match": version } });
+    expect(restored.status).toBe(200);
+    expect(Buffer.from(await restored.arrayBuffer())).toEqual(body);
   });
 
   it("공개 상태 엔드포인트에서 서비스 정보를 반환한다", async () => {

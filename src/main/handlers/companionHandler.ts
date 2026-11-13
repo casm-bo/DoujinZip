@@ -124,6 +124,7 @@ export const companionServer = new CompanionServer(
     return identity.library_id;
   },
   discoveryIdentity,
+  path.join(app.getPath("userData"), "android-backups"),
 );
 companionServer.subscriptionChanged = (readsOnly) => {
   if (!readsOnly) broadcast("subscriptions-updated");
