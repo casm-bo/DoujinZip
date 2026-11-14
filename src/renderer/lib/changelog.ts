@@ -15,6 +15,18 @@ export interface Changelog {
  */
 export const changelogData: Changelog[] = [
   {
+    version: "2.9.1",
+    changes: [
+      {
+        type: "feature",
+        title: "✨ 기능",
+        items: [
+          "Android 자동 백업을 기기별로 PC에 저장하고, 같은 기기를 다시 페어링하면 저장된 백업을 복원할 수 있습니다.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.9.0",
     changes: [
       {
